@@ -575,7 +575,9 @@ open /tmp/catppuccin-mocha.itermcolors  # Importiert automatisch in iTerm2
 
 ### 4f. Dev-Tools installieren - Das Ultimate Terminal Arsenal
 
-**Kern-Tools (MUSS):**
+Jedes Tool muss seinen Platz verdienen. Drei Tiers: MUSS (ohne geht's nicht), SOLL (echter Produktivitaets-Boost), KANN (nice-to-have fuer Power-User).
+
+**Tier 1: MUSS - Moderne Ersetzungen fuer Unix-Klassiker**
 
 | Tool | Ersetzt | Warum besser |
 |------|---------|-------------|
@@ -586,27 +588,79 @@ open /tmp/catppuccin-mocha.itermcolors  # Importiert automatisch in iTerm2
 | `fzf` | Ctrl+R | Fuzzy-Finder fuer alles: Dateien, History, Prozesse |
 | `zoxide` | `cd` | Lernt deine Verzeichnisse, springt zum besten Match |
 | `delta` | `diff` | Syntax-Highlighted Git-Diffs, Side-by-Side |
+| `sd` | `sed` | Intuitive Regex-Syntax, kein Escaping-Wahnsinn |
+| `dust` | `du` | Visuelles Disk-Usage mit Balken, sofort lesbar |
+| `duf` | `df` | Schoene Tabelle statt kryptischem df-Output |
+| `procs` | `ps` | Farbig, sortierbar, filtert nach Ports/Tree |
 | `jq` / `yq` | - | JSON/YAML auf der Kommandozeile |
 
-**Produktivitaets-Booster (SOLL):**
+**Tier 2: SOLL - Produktivitaets-Booster**
 
 | Tool | Funktion |
 |------|----------|
-| `lazygit` | Git-TUI - Staging, Commits, Rebases visuell |
-| `atuin` | Shell-History mit Fuzzy-Search, Kontext, Stats |
-| `btop` | Schoener System-Monitor |
-| `tldr` | Kurzform von man-Pages |
-| `gh` | GitHub CLI |
+| `lazygit` | Git-TUI - Staging, Commits, Rebases, Merges visuell |
+| `atuin` | Shell-History mit Fuzzy-Search, Kontext, Statistiken |
+| `btop` | Schoener System-Monitor mit GPU/Netzwerk/Disk |
+| `tldr` | Kurzform von man-Pages, sofort nutzbar |
+| `gh` | GitHub CLI - PRs, Issues, Actions, Releases |
+| `glow` | Markdown-Renderer im Terminal (README direkt lesen) |
+| `hyperfine` | Benchmarking-Tool (statt `time`, mit Statistik + Warmup) |
+| `watchexec` | File-Watcher: fuehrt Befehl bei Datei-Aenderung aus |
+| `entr` | Minimaler File-Watcher: `ls *.py \| entr pytest` |
+| `difftastic` | Strukturelles Diff (versteht Syntax, nicht nur Zeilen) |
+| `shellcheck` | Shell-Script-Linter (findet Bugs bevor sie passieren) |
+
+**Tier 3: KANN - Power-User Extras**
+
+| Tool | Funktion |
+|------|----------|
+| `direnv` | Per-Verzeichnis ENV-Variablen (auto .envrc laden) |
+| `tokei` | Code-Statistiken (Sprachen, Zeilen, Kommentare) - schneller als cloc |
+| `httpie` | Besseres curl fuer API-Testing (`http GET url`) |
+| `navi` | Interaktives Cheat-Sheet mit fzf |
+| `pv` | Pipe Viewer - Fortschrittsanzeige fuer Pipes |
+| `moreutils` | `sponge`, `parallel`, `ts`, `vidir` und 15 weitere Unix-Perlen |
+| `coreutils` | GNU-Versionen von cat/sort/cut/etc. (konsistent mit Linux) |
+| `gnu-sed` | GNU sed statt macOS BSD sed (vorhersagbare Regex) |
+| `tmux` | Terminal-Multiplexer (Persistent Sessions, Splits, Windows) |
+| `wget` | Robuster als curl fuer Downloads (Resume, Recursive) |
+| `rsync` | Intelligentes Kopieren (Delta-Sync, Resume, Exclude) |
+| `tree` | Verzeichnisstruktur (Klassiker, eza --tree ist aber besser) |
 
 ```bash
-MISSING=""
-for cmd in eza zoxide git-delta lazygit tldr btop atuin bat fd ripgrep fzf jq yq tree gh; do
-  brew list --formula "$cmd" &>/dev/null || MISSING="$MISSING $cmd"
-done
-[[ -n "$MISSING" ]] && echo "Installiere:$MISSING" && brew install $MISSING
+# Tier 1: MUSS
+TIER1="eza zoxide git-delta bat fd ripgrep fzf sd dust duf procs jq yq"
+# Tier 2: SOLL
+TIER2="lazygit atuin btop tldr gh glow hyperfine watchexec entr difftastic shellcheck"
+# Tier 3: KANN
+TIER3="direnv tokei httpie navi pv moreutils coreutils gnu-sed tmux wget rsync tree"
 
+for tier in "TIER1" "TIER2" "TIER3"; do
+  MISSING=""
+  for cmd in ${!tier}; do
+    brew list --formula "$cmd" &>/dev/null || MISSING="$MISSING $cmd"
+  done
+  if [[ -n "$MISSING" ]]; then
+    echo "${tier}:${MISSING}"
+  else
+    echo "${tier}: alles installiert ✓"
+  fi
+done
+
+# Empfehlung: Tier 1+2 immer installieren, Tier 3 nach Bedarf
+# brew install $TIER1 $TIER2
+# brew install $TIER3  # Optional
+
+# Shell-Plugins
 brew list zsh-autosuggestions &>/dev/null || brew install zsh-autosuggestions
 brew list zsh-syntax-highlighting &>/dev/null || brew install zsh-syntax-highlighting
+```
+
+**Direnv aktivieren (falls installiert):**
+```bash
+# In .zshrc:
+eval "$(direnv hook zsh)"
+# Dann in jedem Projekt: echo 'export DB_URL=...' > .envrc && direnv allow
 ```
 
 ### 4g. Git-Config komplett
