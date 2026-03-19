@@ -1133,6 +1133,145 @@ Basierend auf den Findings aus Phase 1-4:
 cp ~/.zshrc ~/.zshrc.backup.$(date +%Y%m%d)
 ```
 
+### 5g. Slack Advisor - Projekt-Automatisierungen vorschlagen
+
+**Elon-Prinzip:** Slack ist die Nervenbahn deiner Operation. Jede manuelle Benachrichtigung die ein Mensch tippen muss, ist ein Fehler im System. Nicht "was KOENNTE man nach Slack schicken?" sondern "was MUSS ein Mensch heute manuell checken, das eine Maschine besser kann?"
+
+**Schritt 1: Projekt scannen**
+```bash
+# Framework & Services erkennen
+cat package.json 2>/dev/null | jq '{name, scripts: .scripts | keys, deps: (.dependencies // {} | keys)}' 2>/dev/null
+cat requirements.txt pyproject.toml Cargo.toml go.mod 2>/dev/null | head -30
+
+# Bestehende Slack-Integrationen
+grep -rl "slack\|webhook\|SLACK_" --include="*.ts" --include="*.js" --include="*.py" --include="*.env*" --include="*.yml" . 2>/dev/null | grep -v node_modules
+
+# Externe Services
+grep -rh "supabase\|firebase\|stripe\|sentry\|datadog\|posthog\|openai\|anthropic" --include="*.ts" --include="*.js" --include="*.py" . 2>/dev/null | grep -v node_modules | sort -u | head -20
+
+# API Routes
+find . -path "*/api/*" -name "*.ts" -o -path "*/routes/*" -name "*.py" 2>/dev/null | grep -v node_modules | head -20
+
+# Cron Jobs
+grep -rl "cron\|schedule\|setInterval\|@Cron\|periodic_task" --include="*.ts" --include="*.js" --include="*.py" . 2>/dev/null | grep -v node_modules
+
+# CI/CD
+cat .github/workflows/*.yml 2>/dev/null | head -30
+
+# DB Models
+cat prisma/schema.prisma 2>/dev/null | grep "model " | head -20
+```
+
+**Schritt 2: Elon-Filter - Was NICHT nach Slack gehoert**
+- Jeder einzelne Commit (Noise)
+- Jeder erfolgreiche Build (nur Failures)
+- Jeder Login (nur Anomalien)
+- Health-Checks die OK sind (nur Failures)
+- Metriken im Normalbereich (nur Threshold-Ueberschreitungen)
+
+**Elon-Filter fuer jede Nachricht:**
+1. Muss jemand SOFORT handeln? → #alerts-critical
+2. Muss jemand es HEUTE sehen? → #daily-digest
+3. Nur "nice to know"? → NICHT SENDEN. Dashboard reicht.
+
+**Schritt 3: Channel-Strategie (max 4)**
+```
+#alerts-critical    → Downtime, Error-Spike, Security
+#alerts-deploy      → Deploy Success + Failure
+#daily-digest       → Taegliche Zusammenfassung
+#weekly-report      → Business-Report
+```
+
+**Schritt 4: Integrations-Katalog (nur vorschlagen was zum Projekt passt)**
+
+| Kategorie | Trigger | Wann senden |
+|-----------|---------|-------------|
+| **Deploy** | CI/CD gefunden | Success + Failure → #alerts-deploy |
+| **Error-Spike** | Sentry/Error-Handling gefunden | >X Errors in 15min → #alerts-critical |
+| **Daily Digest** | DB/Analytics gefunden | 09:00 Uhr: Users, Revenue, Errors → #daily-digest |
+| **Cron-Health** | Cron-Jobs gefunden | Job NICHT gelaufen → #alerts-critical |
+| **API-Uptime** | API-Routes gefunden | Endpoint DOWN → #alerts-critical |
+| **Security** | Auth gefunden | Login-Anomalien, Admin-Aenderungen → #alerts-critical |
+| **PR-Review** | GitHub gefunden | PRs >24h ohne Review → #daily-digest |
+| **DB-Alerts** | Prisma/Supabase gefunden | Connection Pool >80%, Slow Queries → #alerts-critical |
+
+**Schritt 5: Minimale Slack-Utility generieren**
+```typescript
+// lib/slack.ts - EINE Datei, EINE Funktion
+const CHANNELS = {
+  critical: process.env.SLACK_WEBHOOK_CRITICAL,
+  deploy: process.env.SLACK_WEBHOOK_DEPLOY,
+  digest: process.env.SLACK_WEBHOOK_DIGEST,
+} as const;
+
+type Channel = keyof typeof CHANNELS;
+
+export async function slack(channel: Channel, text: string, blocks?: any[]) {
+  const url = CHANNELS[channel];
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, ...(blocks && { blocks }) }),
+    });
+  } catch (err) {
+    console.error(`Slack ${channel} failed:`, err);
+  }
+}
+```
+
+```python
+# utils/slack.py - Python-Variante
+import os, json, urllib.request
+
+CHANNELS = {
+    'critical': os.environ.get('SLACK_WEBHOOK_CRITICAL'),
+    'deploy': os.environ.get('SLACK_WEBHOOK_DEPLOY'),
+    'digest': os.environ.get('SLACK_WEBHOOK_DIGEST'),
+}
+
+def slack(channel: str, text: str, blocks: list | None = None):
+    url = CHANNELS.get(channel)
+    if not url: return
+    data = json.dumps({'text': text, **({"blocks": blocks} if blocks else {})}).encode()
+    try: urllib.request.urlopen(urllib.request.Request(url, data, {'Content-Type': 'application/json'}))
+    except Exception as e: print(f"Slack {channel} failed: {e}")
+```
+
+**Schritt 6: Automatisierungs-Check jenseits Slack**
+
+| Was | Pruefen | Vorschlag |
+|-----|---------|-----------|
+| Auto-Deploy | CD vorhanden? | GitHub Actions → Auto-Deploy on merge |
+| Auto-Backup | DB-Backup? | pg_dump Cron → S3 + Slack bei Failure |
+| Auto-Cleanup | Alte Logs/Temp? | Cron + Alert bei Disk >90% |
+| Auto-Deps | Updates manuell? | Dependabot/Renovate + Weekly Digest |
+| Auto-Monitoring | Manuell checken? | Health-Endpoint + Uptime-Check |
+| Auto-Reports | Manuell sammeln? | Scheduled Query → Slack Block |
+
+**Slack-Regeln:**
+- Webhook > Bot > App (einfachste Loesung)
+- Failures > Successes (nur Abweichungen melden)
+- Thresholds > Absolutes ("Error-Spike" statt "Error aufgetreten")
+- Max 4 automatisierte Channels
+- Eine Slack-Utility-Datei, kein Code verstreut im Projekt
+- Nie .env-Inhalte anzeigen, nur .env.example
+
+**Vorschlag-Format:**
+```
+┌─────────────────────────────────────────┐
+│ VORSCHLAG: [Name]                       │
+│ Was:     [Was wird automatisiert]        │
+│ Warum:   [Problem das es loest]         │
+│ Aufwand: [Gering/Mittel/Hoch]           │
+│ Impact:  [Hoch/Mittel/Niedrig]          │
+│ Channel: #[channel]                     │
+│ Elon-Check: ✓ Handlung noetig?          │
+│             ✓ Kein einfacherer Weg?     │
+└─────────────────────────────────────────┘
+```
+
 ---
 
 ## Output-Format
@@ -1163,6 +1302,8 @@ Am Ende IMMER einen Report erstellen:
 ║ Nerd Font:     ✗/✓                                       ║
 ║ Brewfile:      ✗/✓ (X Eintraege)                         ║
 ║ Claude:        Settings ✗/✓, MCPs X/4, Skills X/Y       ║
+║ Slack:         X Integrationen vorgeschlagen              ║
+║ Automation:    X fehlende Automatisierungen               ║
 ╚══════════════════════════════════════════════════════════╝
 ```
 
@@ -1188,6 +1329,8 @@ Am Ende IMMER einen Report erstellen:
 - GitHub MCP Server (PRs/Issues direkt aus Claude)
 - GSD fuer Projektmanagement mit Subagents
 - Skills die echten Mehrwert liefern, kein Bloat
+- Slack als Nervenbahn: Failures > Successes, Thresholds > Absolutes, max 4 Channels
+- Jede manuelle Benachrichtigung = Fehler im System
 
 **Was Elon NICHT haette:**
 - Spotify Desktop App (Browser reicht)
