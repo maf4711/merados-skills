@@ -1,0 +1,19 @@
+# meradOS Standard Python Config
+# Copy relevant sections into your project's pyproject.toml
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.isort]
+# Adjust known-first-party per project
+known-first-party = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "--tb=short -q"

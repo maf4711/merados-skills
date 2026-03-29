@@ -1,0 +1,27 @@
+{
+  "$schema": "meradOS Standard Claude Code Settings — copy to .claude/settings.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "command": "ruff format $FILE && ruff check --fix $FILE",
+        "description": "Auto-format Python on save"
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npx:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(tsc:*)",
+      "Bash(curl:*)",
+      "Read(*)"
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+# meradOS Standard .gitignore
+# Copy into new projects and adjust as needed
+
+# Environment
+.env
+.env*.local
+
+# Dependencies
+node_modules/
+.venv/
+
+# Build output
+dist/
+.next/
+cdk.out/
+.cdk.staging/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# System
+.DS_Store
+*.log
+*.bak
+
+# Database
+*.db
+
+# IDE
+.claude/
+
+# Analysis reports (generated, not source)
+STEP*.md
+*_SUMMARY.md
+*_ANALYSIS.md
+*_REPORT.md
+*_NEXT_STEPS.md
+
+# Debug scripts (temporary)
+check_*.py
+find_*.py
+investigate_*.py
+
+# Trading state (merados-specific)
+# .initial_cash_usd
+# .kill_switch
+# .scheduler.lock

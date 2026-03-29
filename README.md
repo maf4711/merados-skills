@@ -2,6 +2,27 @@
 
 Agent Skills fuer Claude Code nach dem **Elon 5-Schritt-Algorithmus**: Hinterfragen → Loeschen → Vereinfachen → Beschleunigen → Automatisieren.
 
+## Guideline & Configs
+
+- **[GUIDELINE.md](GUIDELINE.md)** — Permanente repo-uebergreifende Regeln fuer alle meradOS-Projekte
+- **[configs/](configs/)** — Wiederverwendbare Konfigurationen:
+
+| Datei | Verwendung |
+|-------|------------|
+| `tsconfig.base.json` | TypeScript Basis (strict, ESNext, path alias) |
+| `tsconfig.nextjs.json` | Next.js extends base |
+| `tsconfig.node.json` | Node.js/Backend extends base |
+| `eslint.config.mjs` | Flat ESLint Config (TypeScript) |
+| `.eslintrc.nextjs.json` | Next.js Legacy ESLint |
+| `pyproject.toml` | Python Ruff + pytest Config |
+| `tailwind.preset.ts` | meradOS Design Tokens als Tailwind Preset |
+| `next.config.ts` | Next.js Standard (strict, no powered-by, AVIF) |
+| `.gitignore` | Standard-Ignores fuer alle Projekte |
+| `ci.yml` | GitHub Actions CI Template |
+| `claude-branch-auto-merge.yml` | Auto-Merge fuer claude/* Branches |
+| `claude-code-review.yml` | Automatisches Code Review per Claude |
+| `claude-settings.json` | Claude Code Settings mit Hooks + Permissions |
+
 ## Installation
 
 ```bash
