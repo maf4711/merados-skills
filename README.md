@@ -22,6 +22,8 @@ Agent Skills fuer Claude Code nach dem **Elon 5-Schritt-Algorithmus**: Hinterfra
 | `claude-branch-auto-merge.yml` | Auto-Merge fuer claude/* Branches |
 | `claude-code-review.yml` | Automatisches Code Review per Claude |
 | `claude-settings.json` | Claude Code Settings mit Hooks + Permissions |
+| `vercel-deploy.yml` | Vercel Production + Preview Deploy Workflow |
+| `vercel.json` | Vercel Config Template mit Cron-Beispiel |
 
 ## Installation
 

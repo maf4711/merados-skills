@@ -1,0 +1,9 @@
+{
+  "$comment": "meradOS Vercel Config Template — adjust crons per project",
+  "crons": [
+    {
+      "path": "/api/health",
+      "schedule": "*/30 * * * *"
+    }
+  ]
+}

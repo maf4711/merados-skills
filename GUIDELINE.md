@@ -198,6 +198,24 @@ concurrency:
 - Taeglich 06:00 UTC mit echten API-Keys
 - Failure-Notification per Script
 
+### Vercel Deployment
+- **Production:** Push auf `main` → Vercel CLI build + deploy (`--prebuilt --prod`)
+- **Preview:** PR → Vercel preview deploy + PR-Comment mit URL
+- **Secrets:** `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+- **Concurrency:** `cancel-in-progress: false` fuer Production (kein Abbruch laufender Deploys)
+- **Cron Jobs:** In `vercel.json` definiert (alpha-merados hat 22 Cron-Endpoints)
+- **Pattern:** Vercel fuer Frontend/Crons, AWS fuer Backend/Long-Running
+
+### Vercel Cron Conventions (alpha-merados)
+| Frequenz | Beispiele |
+|----------|-----------|
+| `*/5 * * * 1-5` | Trade-Alerts (alle 5 Min, Mo-Fr) |
+| `*/30 * * * 1-5` | System-Health |
+| `0 */2 * * 1-5` | Alerts (alle 2h) |
+| `0 9 * * 1-5` | Taeglich morgens (Rankings, Errors, Live-Depots) |
+| `0 18 * * 5` | Woechentlich Freitag (Recap, Experiments) |
+| `30 6 * * 1` | Woechentlich Montag (Newsletter) |
+
 ---
 
 ## 7. Infrastruktur-Stack
