@@ -61,7 +61,10 @@ fi
 
 # ssh -T beendet sich immer mit Status 1 – unter pipefail würde das die
 # ganze Pipe fehlschlagen lassen. Darum Ausgabe erst einfangen, dann prüfen.
-ssh_out=$(ssh -T -o StrictHostKeyChecking=accept-new git@github.com 2>&1 || true)
+# BatchMode + ConnectTimeout sind Pflicht: auf einem frischen Mac gibt es
+# keine known_hosts und keinen Key, sonst wartet ssh hier auf eine Eingabe.
+ssh_out=$(ssh -T -o BatchMode=yes -o ConnectTimeout=8 \
+              -o StrictHostKeyChecking=accept-new git@github.com 2>&1 || true)
 if grep -q "successfully authenticated" <<<"$ssh_out"; then
   ok "SSH-Key funktioniert"
 else
