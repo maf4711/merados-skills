@@ -45,8 +45,29 @@ local_remotes() {
 dirty_count() { git -C "$1" status --porcelain 2>/dev/null | wc -l | tr -d ' '; }
 unpushed_count() { git -C "$1" log --branches --not --remotes --oneline 2>/dev/null | wc -l | tr -d ' '; }
 
+# Archivierte Repos sind read-only – unpushed Commits sind dort ein
+# Dauerzustand, kein Problem. Einmal pro Lauf abfragen und merken, weil
+# jede gh-Abfrage einen Netzwerk-Roundtrip kostet.
+ARCHIVED_CACHE=""
+is_archived() {
+  local nwo="$1"
+  case "$ARCHIVED_CACHE" in
+    *"|$nwo:1|"*) return 0 ;;
+    *"|$nwo:0|"*) return 1 ;;
+  esac
+  local a
+  a=$(gh repo view "$nwo" --json isArchived --jq 'if .isArchived then 1 else 0 end' 2>/dev/null) || a=0
+  ARCHIVED_CACHE="$ARCHIVED_CACHE|$nwo:$a|"
+  [ "$a" = 1 ]
+}
+
+nwo_of() {
+  git -C "$1" remote get-url origin 2>/dev/null \
+    | sed -E 's#^(ssh://)?git@github\.com[:/]##; s#^https://github\.com/##; s#\.git$##'
+}
+
 cmd_status() {
-  local dirty=0 unpushed=0 noremote=0
+  local dirty=0 unpushed=0 noremote=0 frozen=0
   bold "Lokale Repos in $DEV"
   while read -r r; do
     local name s u
@@ -59,9 +80,16 @@ cmd_status() {
     s=$(dirty_count "$r")
     u=$(unpushed_count "$r")
     [ "$s" != 0 ] && { err "  ! $name – $s uncommitted"; dirty=$((dirty + 1)); }
-    [ "$u" != 0 ] && { warn "  ↑ $name – $u unpushed"; unpushed=$((unpushed + 1)); }
+    if [ "$u" != 0 ]; then
+      if is_archived "$(nwo_of "$r")"; then
+        echo "  ❄ $name – $u Commits, Repo archiviert (bleibt lokal)"
+        frozen=$((frozen + 1))
+      else
+        warn "  ↑ $name – $u unpushed"; unpushed=$((unpushed + 1))
+      fi
+    fi
   done < <(local_repos)
-  echo "  $dirty dirty, $unpushed unpushed, $noremote ohne Remote"
+  echo "  $dirty dirty, $unpushed unpushed, $noremote ohne Remote, $frozen archiviert"
 
   bold "Auf GitHub, aber nicht lokal"
   local missing=0 have
@@ -184,6 +212,10 @@ cmd_push() {
     git -C "$r" remote get-url origin >/dev/null 2>&1 || continue
     u=$(unpushed_count "$r")
     [ "$u" = 0 ] && continue
+    if is_archived "$(nwo_of "$r")"; then
+      echo "  ❄ $name – archiviert, $u Commits bleiben lokal"
+      continue
+    fi
     bold "push $name ($u Commits)"
     git -C "$r" push --all 2>/dev/null || diagnose_push "$r" "$name"
     [ "$(dirty_count "$r")" != 0 ] && warn "  Achtung: $name hat noch uncommitted changes"
