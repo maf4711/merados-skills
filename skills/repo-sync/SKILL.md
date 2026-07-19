@@ -78,28 +78,29 @@ DEVSYNC_OWNERS="maf4711 MeradosUG NeuerOrg" ~/.claude/skills/repo-sync/devsync.s
 
 ## Installation auf einem neuen Mac
 
-Der Skill ist selbst-enthaltend — `devsync.sh` liegt neben dieser Datei.
+`setup-mac.sh` erledigt alles: Voraussetzungen prüfen, globale .gitignore
+setzen, Skill-Repo klonen, alle Skills verlinken, alle Repos holen.
+Idempotent — mehrfaches Ausführen ist gefahrlos.
 
 ```bash
-# 1. Voraussetzungen
+# Einmalig von Hand (braucht Browser bzw. Eingabe):
 gh auth login                       # SSH als Protokoll wählen
-ssh -T git@github.com               # muss "Hi <user>!" sagen
 
-# 2. Skill-Repo holen und verlinken
-mkdir -p ~/Developer ~/.claude/skills
+# Danach:
 git clone git@github.com:maf4711/merados-skills.git ~/Developer/merados-skills
-ln -sfn ~/Developer/merados-skills/skills/repo-sync ~/.claude/skills/repo-sync
-
-# 3. Prüfen
-~/.claude/skills/repo-sync/devsync.sh status
+bash ~/Developer/merados-skills/skills/repo-sync/setup-mac.sh
 ```
 
-Symlink statt Kopie — sonst driften die Macs auseinander. Skill-Updates kommen
-danach per `git -C ~/Developer/merados-skills pull`.
+Vorher ansehen, was passieren würde: `setup-mac.sh --check`.
 
-Alle Skills auf einmal verlinken:
+Anschließend Claude Code neu starten, damit die Skills geladen werden.
+
+Skills werden **verlinkt, nicht kopiert** — sonst driften die Macs auseinander
+und ein `git pull` im Skill-Repo bliebe wirkungslos. Updates danach:
+
 ```bash
-for s in ~/Developer/merados-skills/skills/*/; do
-  ln -sfn "$s" ~/.claude/skills/"$(basename "$s")"
-done
+git -C ~/Developer/merados-skills pull
 ```
+
+Findet das Script ein Skill-Verzeichnis vor, das eine echte Kopie ist,
+überschreibt es diese **nicht**, sondern nennt den Befehl zum Ersetzen.

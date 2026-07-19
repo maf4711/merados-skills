@@ -1,0 +1,22 @@
+# Globale Ignores – gelten für alle Repos auf diesem Mac.
+# git config --global core.excludesfile ~/.gitignore_global
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# .nosync-Artefakte: entstehen, wenn ein Cloud-Sync (iCloud/OneDrive/Dropbox)
+# Verzeichnisse vom Hochladen ausnimmt. Sie sind lokal und gehören nie ins Repo.
+*.nosync
+*.nosync/
+.git.nosync/
+
+# Editor / Tooling
+.idea/
+*.swp
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
