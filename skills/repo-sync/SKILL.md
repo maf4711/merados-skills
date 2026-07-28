@@ -52,6 +52,28 @@ Kurzform, wenn alles sauber ist: `devsync.sh sync` (= push, pull, clone).
 Vor dem Zuklappen: Schritt 2 + 3. Was nicht auf GitHub liegt, existiert auf dem
 anderen Mac nicht.
 
+## Auto-Sync (LaunchAgent, alle 30 min)
+
+`auto-sync.sh` läuft als User-LaunchAgent `com.merados.devsync`:
+
+- **alle 30 min** + einmal beim Login: `devsync push` dann `devsync pull`
+- **macOS-Notification**, wenn danach noch dirty oder unpushed Repos bleiben
+- **kein auto-commit**, kein clone (clone bleibt bei `open-mac` / manuell)
+- Log: `~/.cache/devsync/auto-sync.log`
+
+```bash
+# Sofort testen (immer Notification)
+~/.claude/skills/repo-sync/auto-sync.sh --now
+
+# Status des Agents
+launchctl print "gui/$(id -u)/com.merados.devsync" | head -20
+
+# Aus / Ein
+launchctl bootout "gui/$(id -u)/com.merados.devsync"
+launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.merados.devsync.plist
+```
+
+Installation passiert mit `setup-mac.sh` (Schritt 6) oder manuell wie oben.
 ## Was NICHT gesynct wird
 
 Ehrlich ansagen, statt Vollständigkeit zu suggerieren:

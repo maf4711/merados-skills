@@ -126,7 +126,7 @@ for s in "$SKILLS_DIR"/skills/*/; do
 done
 
 # --------------------------------------------------------------------------- #
-step "5/5  Repos holen"
+step "5/6  Repos holen"
 
 if [ "$CHECK_ONLY" = 1 ]; then
   warn "würde tun: devsync.sh clone"
@@ -139,6 +139,29 @@ else
   bash "$HERE/devsync.sh" status
 fi
 
+# --------------------------------------------------------------------------- #
+step "6/6  Auto-Sync LaunchAgent (alle 30 min + Notification)"
+# push+pull periodisch; notify bei dirty/unpushed. Commitet nie.
+
+PLIST_SRC="$HERE/com.merados.devsync.plist"
+PLIST_DST="$HOME/Library/LaunchAgents/com.merados.devsync.plist"
+if [ -f "$PLIST_SRC" ]; then
+  if do_it "LaunchAgent installieren"; then
+    mkdir -p "$HOME/Library/LaunchAgents" "$HOME/.cache/devsync"
+    chmod +x "$HERE/auto-sync.sh" 2>/dev/null || true
+    # HOME-Pfad in der Plist an diesen User anpassen (Template nutzt /Users/a321)
+    sed "s|/Users/a321|$HOME|g" "$PLIST_SRC" > "$PLIST_DST"
+    launchctl bootout "gui/$(id -u)/com.merados.devsync" 2>/dev/null || true
+    launchctl bootstrap "gui/$(id -u)" "$PLIST_DST" 2>/dev/null \
+      || launchctl load -w "$PLIST_DST" 2>/dev/null || true
+    ok "com.merados.devsync geladen (alle 30 min)"
+  fi
+else
+  warn "com.merados.devsync.plist fehlt, übersprungen"
+fi
+
 step "Fertig."
 echo "  Claude Code neu starten, damit die Skills geladen werden."
 echo "  Danach:  /repo-sync   oder   ~/.claude/skills/repo-sync/devsync.sh status"
+echo "  Auto:    launchctl print gui/\$(id -u)/com.merados.devsync"
+echo "  Log:     ~/.cache/devsync/auto-sync.log"
