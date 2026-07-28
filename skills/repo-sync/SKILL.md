@@ -11,6 +11,9 @@ nichts wird per Netzwerk-Share oder Cloud-Ordner kopiert.
 Motor ist `~/.claude/skills/repo-sync/devsync.sh`. Der Skill entscheidet, *was* wann läuft,
 und übersetzt das Ergebnis für den User.
 
+**Lifecycle (open / leave / Agent):** Skill **open-mac** (`/open-mac`, `/leave-mac`).
+Dieser Skill bleibt die technische Referenz + Setup.
+
 ## Ablauf vor dem Bearbeiten
 
 Immer in dieser Reihenfolge — sonst überschreibst du Arbeit vom anderen Mac:
