@@ -1,0 +1,14 @@
+#!/bin/bash
+# 80s80s Depeche Mode Radio → only addressable, powered-on HomePods
+set -euo pipefail
+DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT="$DIR/play-depeche-mode-homepods.applescript"
+# Prefer skill-local script; fall back to user install
+if [ ! -f "$SCRIPT" ]; then
+  SCRIPT="$HOME/Developer/scripts/play-depeche-mode-homepods.applescript"
+fi
+if [ ! -f "$SCRIPT" ]; then
+  echo "ERROR: play-depeche-mode-homepods.applescript not found" >&2
+  exit 1
+fi
+exec osascript "$SCRIPT"
