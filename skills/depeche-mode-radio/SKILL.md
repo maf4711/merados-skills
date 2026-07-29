@@ -1,87 +1,99 @@
 ---
 name: depeche-mode-radio
 description: >
-  80s80s Depeche Mode Radio auf alle adressierbaren, angeschalteten HomePods.
-  Trigger: "/depeche", "/depeche-mode-radio", "Depeche Mode Radio", "80s80s Depeche",
-  "Depeche Mode auf HomePods", "HomePod Radio Depeche", "spiel Depeche Mode Radio",
-  "DM Radio HomePods". Spielt den Live-Stream 80s80s Depeche Mode und AirPlay nur
-  auf HomePods mit kind=HomePod, available=true und erfolgreich selected.
+  80s80s Depeche Mode Radio — HomePod-Siri ohne Mac, Multi-Room wo möglich.
+  Trigger: "Hey Siri, Macaro", "Macaro", "Macaro Car", "/depeche".
+  Macaro: Apple-Music-Sender + AirPlay-2 zu allen bekannten HomePods.
+  Macaro Car: Sender auf iPhone/CarPlay. CarPlay+HomePods gleichzeitig
+  als eine Gruppe kann Apple nicht — siehe Doku.
 ---
 
-# Depeche Mode Radio → HomePods
+# Macaro — 80s80s Depeche Mode (ohne Mac)
 
-Spielt **80s80s Depeche Mode Radio** (Live-Stream) über Apple Music AirPlay auf
-**alle erreichbaren HomePods**. Offline / nicht adressierbare Geräte werden
-übersprungen (kein Fehler-Spam).
+## Was du sagst
 
-## Sofort ausführen
+| Phrase | Wirkung |
+|--------|---------|
+| **Hey Siri, Macaro** | Sender starten + **alle konfigurierten HomePods** (AirPlay 2 Add) |
+| **Hey Siri, Macaro Car** | Sender auf **iPhone / CarPlay** (Auto) |
 
-Bei Trigger **ohne** Extra-Anweisung direkt starten:
+Sender: [80s80s Depeche Mode](https://music.apple.com/de/station/80s80s-depeche-mode/ra.1461987621) (`ra.1461987621`)
+
+## CarPlay + alle HomePods — ehrliche Grenze
+
+**Apple kann nicht:** eine einzige Wiedergabe gleichzeitig auf **CarPlay und allen HomePods** als Multi-Room-Gruppe (Auto ist kein AirPlay-2-Mitglied wie HomePods).
+
+| Situation | Was „Macaro“ macht |
+|-----------|-------------------|
+| **Zuhause** (iPhone oder HomePod) | Station + HomePods per AirPlay 2 bündeln |
+| **Im Auto** (CarPlay) | **Macaro Car** → Ton im Auto |
+| **Auto und Wohnung gleichzeitig** | **Nicht** als ein Stream — zwei getrennte Sessions bräuchten zwei Geräte/Streams (Abo-Limits) |
+
+**Ohne Mac** ist der realistische Setup:
+
+1. Zuhause: **Macaro** → alle HomePods  
+2. Auto: **Macaro Car** → CarPlay  
+
+## Einmalig auf dem iPhone (wichtig)
+
+Der Kurzbefehl enthält eure HomePod-Namen:
+
+`Küche` (primär), dann Add: `Back`, `Badezimmer`, `Büro`, `Schlafzimmer`, `Wohnzimmer`
+
+**Küche** und **Wohnzimmer** haben echte Route-IDs aus deinem System.  
+Die anderen können beim ersten Mal leer sein → einmal im Kurzbefehl nachziehen:
+
+1. iPhone → **Kurzbefehle** → **Macaro** öffnen  
+2. Jede Aktion **„Wiedergabeziel festlegen“** antippen  
+3. Den passenden **HomePod** wählen (Add bleibt Add)  
+4. Speichern → iCloud → HomePods  
+
+Ohne diesen Schritt hören oft nur die HomePods mit gültiger Route (Küche/Wohnzimmer) bzw. nur das Gerät, das Siri hört.
+
+### Optional: Home-App-Gruppe „Überall“
+
+Zusätzlich (oder als Fallback):
+
+1. App **Home** → Lautsprecher → Gruppe mit allen HomePods  
+2. Siri: *„Spiel 80s80s Depeche Mode auf Überall“*
+
+## Kurzbefehl-Inhalt (Macaro)
+
+1. Kommentar (Doku)  
+2. URL = Apple-Music-Station  
+3. URL öffnen  
+4. Wiedergabeziel **Set** → Küche  
+5. Wiedergabeziel **Add** → Back, Badezimmer, Büro, Schlafzimmer, Wohnzimmer  
+
+Läuft auf **iPhone / HomePod** (iCloud), **kein Mac** zur Laufzeit.
+
+## Dateien
+
+| Datei | Zweck |
+|-------|--------|
+| `shortcuts/Macaro.wflow` | Multi-HomePod |
+| `shortcuts/Macaro Car.wflow` | CarPlay/iPhone |
+| `shortcuts/build/*.shortcut` | signiert, importierbar |
+| `shortcuts/Macaro-Mac.wflow` | alter Mac-AirPlay-Weg (optional) |
+
+Neu signieren / importieren:
 
 ```bash
-~/.agents/skills/depeche-mode-radio/scripts/depeche-mode-radio
+cd ~/Developer/merados-skills/skills/depeche-mode-radio/shortcuts
+shortcuts sign -m anyone -i Macaro.wflow -o build/Macaro.shortcut
+shortcuts sign -m anyone -i "Macaro Car.wflow" -o "build/Macaro Car.shortcut"
+open build/Macaro.shortcut
+open "build/Macaro Car.shortcut"
 ```
 
-Oder (gleicher Wrapper):
+## Agent-Verhalten
 
-```bash
-depeche-mode-radio
-```
-
-Skript: `scripts/play-depeche-mode-homepods.applescript` (osascript + Music).
-
-## Filter-Regeln (nicht ändern)
-
-Nur Geräte mit:
-
-1. `kind = HomePod` (kein Computer, kein Apple TV)
-2. `available = true` (an / im Netzwerk)
-3. Nach `set selected … true` ist `selected` wirklich `true`
-
-Sonst: **skip** mit Grund (`offline` / `nicht adressierbar`).
-
-Stream-URL (80s80s Depeche Mode):
-
-`https://streams.80s80s.de/dm/mp3-192/streams.80s80s.de/`
-
-## Antwort an den User
-
-Kurz melden, was das Skript zurückgibt, z.B.:
-
-```
-Playing: Back, Badezimmer, Büro, Küche, Schlafzimmer | playing
-skip: Wohnzimmer (nicht adressierbar)
-```
-
-- **Playing:** aktiv AirPlay-HomePods  
-- **skip:** offline oder nicht multi-room adressierbar  
-- Bei Exit ≠ 0: Fehlertext zeigen (z.B. kein HomePod online)
-
-## Optionale Varianten
-
-| User sagt | Aktion |
-|-----------|--------|
-| (nur Trigger) | Radio starten (default) |
-| „Status“ / „welche HomePods“ | `osascript -e 'tell application "Music" to get name of every AirPlay device whose selected is true and kind is HomePod'` + player state |
-| „Stop“ / „stopp“ | `osascript -e 'tell application "Music" to pause'` |
-| „nur Wohnzimmer“ | **Nicht** im Default-Skript — User darauf hinweisen, dass der Skill absichtlich **alle** adressierbaren HomePods nimmt; manuell in Music AirPlay ändern |
-
-## Manuelle Shortcuts (User, kein Agent)
-
-- App: `~/Applications/Depeche Mode Radio.app`
-- Desktop: `~/Desktop/Depeche Mode Radio.command`
-- CLI: `~/bin/depeche-mode-radio` → Skill-Skript
-- Siri: Kurzbefehl mit Shell-Skript + Phrase „Depeche Mode Radio“ (iCloud → HomePod: „Hey Siri, Depeche Mode Radio“)
-
-## Abhängigkeiten
-
-- macOS, App **Musik** (Apple Music / Internet-Radio-Stream)
-- HomePods im gleichen Apple-Account / Netzwerk
-- Kein API-Key
+- „Macaro“ / HomePods / ohne Mac → **nicht** `depeche-mode-radio` (Mac-AirPlay) starten  
+- User will **explizit** Mac-AirPlay → CLI `depeche-mode-radio` / `Macaro-Mac`  
+- CarPlay-Fragen → Grenze erklären + **Macaro Car**
 
 ## Nicht tun
 
-- Keine Offline-HomePods erzwingen
-- Mac (`computer`) nicht als AirPlay-Ziel setzen
-- Stream-URL nicht ohne Grund ändern
-- Nicht nachfragen, wenn der User klar „Radio starten“ meint — einfach ausführen
+- Nicht behaupten, CarPlay + alle HomePods liefen als **ein** Stream ohne Mac  
+- Offline-HomePods nicht erzwingen  
+- Mac nicht als Default-Orchestrierung nutzen, wenn User „ohne Mac“ will  
