@@ -1,0 +1,15 @@
+# Fabrik Welle-1 hygiene skeleton (zero-cost template wave)
+name: ci
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Presence smoke
+        run: |
+          test -f README.md -o -f README -o -f readme.md
+          echo "hygiene smoke ok"
