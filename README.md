@@ -35,11 +35,23 @@ npx skills add maf4711/merados-skills
 npx skills add maf4711/merados-skills@merados-desktop
 npx skills add maf4711/merados-skills@merados-slack-advisor
 npx skills add maf4711/merados-skills@elon-algo
+npx skills add maf4711/merados-skills@dm8080s
 ```
 
 ---
 
 ## Skills
+
+### DM8080s (`/dm8080s`)
+
+Mac-als-Quelle: 80s80s HTTP-Stream auf HomePods, Watchdog, Presence, Besuchsmodus, Menüleisten-App.
+
+- Immer zuerst `dm8080s status`. Schon HTTP-playing → nicht neu starten.
+- Nie Apple-Music-Sender `ra.1461987621` (pausiert AirPlay).
+- `aus` = `dm8080s off --keep-http` (Webhook bleibt). Wirklich tot = `dm8080s off`.
+- Siri ohne Mac / CarPlay bleibt **depeche-mode-radio** (Macaro).
+
+Repo: `~/Developer/DM8080s`
 
 ### meradOS Desktop (`/merados-desktop`)
 

@@ -89,7 +89,8 @@ open "build/Macaro Car.shortcut"
 ## Agent-Verhalten
 
 - „Macaro“ / HomePods / ohne Mac → **nicht** `depeche-mode-radio` (Mac-AirPlay) starten  
-- User will **explizit** Mac-AirPlay → CLI `depeche-mode-radio` / `Macaro-Mac`  
+- Mac als Quelle, Watchdog, Besuch, Stall, „radio an/aus“, DM8080s-App → Skill **dm8080s** (nie dieses CLI — Full-Deselect stoppt alle Pods)  
+- User will **explizit** den alten Mac-Shortcut → `Macaro-Mac`  
 - CarPlay-Fragen → Grenze erklären + **Macaro Car**
 
 ## Nicht tun
