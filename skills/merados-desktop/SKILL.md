@@ -390,7 +390,7 @@ defaults write NSGlobalDomain NSAutomaticCapitalizationEnabled -bool false
 ### 3d. Spotlight vereinfachen
 
 ```bash
-for dir in ~/Developer ~/go ~/miniforge3 ~/Venvs ~/.ollama ~/.cargo ~/.rustup ~/.npm ~/.gradle ~/.docker ~/node_modules; do
+for dir in ~/Developer ~/Library/Developer ~/go ~/miniforge3 ~/Venvs ~/.ollama ~/.cargo ~/.rustup ~/.npm ~/.gradle ~/.docker ~/node_modules; do
   [ -d "$dir" ] && [ ! -f "$dir/.metadata_never_index" ] && echo "SPOTLIGHT: $dir nicht ausgeschlossen"
 done
 mdutil -s / 2>/dev/null
