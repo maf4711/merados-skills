@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # auto-sync – periodischer Multi-Mac Sync (LaunchAgent).
-# Push + Pull alle 30 min. Commitet nie. Notification bei dirty/unpushed/Fehler.
+# Push + Pull (Merge) alle 2 min. Commitet nie. Notification bei dirty/unpushed/Fehler.
 #
 #   auto-sync.sh           # normaler Lauf
 #   auto-sync.sh --now     # gleich + immer Status-Notification (Debug)
@@ -44,7 +44,7 @@ fi
 
 log "=== auto-sync start ==="
 
-# Push + Pull (kein clone alle 30 min — zu teuer; clone bei open-mac / täglich)
+# Push + Pull-Merge (kein clone, kein commit — ship bleibt beim Agenten / User)
 if ! bash "$DEVSYNC" push; then
   log "push returned non-zero"
 fi

@@ -1,131 +1,72 @@
 ---
 name: repo-sync
-description: Repos zwischen mehreren Macs via GitHub synchron halten. Trigger auf "/repo-sync", "repos syncen", "sync repos", "vor dem bearbeiten syncen", "anderes macbook", "zweiter mac", "repos abgleichen", "was ist unpushed", "fehlende repos klonen". Pusht lokale Commits, holt Remote-Stand, klont fehlende Repos, meldet Konflikte BEVOR gearbeitet wird.
+description: Use when syncing ~/Developer git repos across Macs via GitHub, or when the user says /repo-sync, repos syncen, sync repos, ship to github, merge and cpr, commit push release all local repos, fastest sync, was ist unpushed, fehlende repos klonen, anderes macbook, zweiter mac, leave-mac, open-mac, danach repo-sync.
 ---
 
 # repo-sync
 
-Hält `~/Developer` über mehrere Macs synchron. GitHub ist die einzige Wahrheit —
-nichts wird per Netzwerk-Share oder Cloud-Ordner kopiert.
+Hält `~/Developer` über mehrere Macs synchron. GitHub ist die einzige Wahrheit.
 
-Motor ist `~/.claude/skills/repo-sync/devsync.sh`. Der Skill entscheidet, *was* wann läuft,
-und übersetzt das Ergebnis für den User.
+Motor: `~/.claude/skills/repo-sync/devsync.sh` (nach `install.sh` auch via Skill-Suite).
 
-**Lifecycle (open / leave / Agent):** Skill **open-mac** (`/open-mac`, `/leave-mac`).
-Dieser Skill bleibt die technische Referenz + Setup.
-
-## Ablauf vor dem Bearbeiten
-
-Immer in dieser Reihenfolge — sonst überschreibst du Arbeit vom anderen Mac:
-
-1. **Lage feststellen**
-   ```bash
-   ~/.claude/skills/repo-sync/devsync.sh status
-   ```
-   Zeigt dirty / unpushed / fehlende Repos.
-
-2. **Uncommitted Changes klären** — NICHT automatisch committen.
-   Bei dirty Repos: dem User die Diffs zeigen (`git -C <repo> status --short`)
-   und fragen, ob committen, stashen oder verwerfen. Erst danach weiter.
-   Begründung: uncommitted Arbeit ist der einzige Zustand, der beim Sync
-   unwiederbringlich verloren gehen kann.
-
-3. **Eigene Commits raufschieben**
-   ```bash
-   ~/.claude/skills/repo-sync/devsync.sh push
-   ```
-
-4. **Fremden Stand holen**
-   ```bash
-   ~/.claude/skills/repo-sync/devsync.sh pull
-   ```
-   `--ff-only`. Schlägt ein Pull fehl, ist der Branch divergiert → nicht blind
-   mergen, sondern dem User Branch + beide Commit-Listen zeigen und fragen.
-
-5. **Fehlende Repos holen** (nur wenn der User auf einem frischen Mac ist
-   oder explizit danach fragt)
-   ```bash
-   ~/.claude/skills/repo-sync/devsync.sh clone
-   ```
-
-Kurzform, wenn alles sauber ist: `devsync.sh sync` (= push, pull, clone).
-
-## Beim Verlassen eines Macs
-
-Vor dem Zuklappen: Schritt 2 + 3. Was nicht auf GitHub liegt, existiert auf dem
-anderen Mac nicht.
-
-## Auto-Sync (LaunchAgent, alle 30 min)
-
-`auto-sync.sh` läuft als User-LaunchAgent `com.merados.devsync`:
-
-- **alle 30 min** + einmal beim Login: `devsync push` dann `devsync pull`
-- **macOS-Notification**, wenn danach noch dirty oder unpushed Repos bleiben
-- **kein auto-commit**, kein clone (clone bleibt bei `open-mac` / manuell)
-- Log: `~/.cache/devsync/auto-sync.log`
+**Default für den Agenten: schnellster voller Lauf** — paralleles **Commit + Merge + Push + Release** alles, was lokal liegt. Nicht fragen, nicht ff-only, nicht rebase.
 
 ```bash
-# Sofort testen (immer Notification)
+~/.claude/skills/repo-sync/devsync.sh sync
+# = ship (commit ohne Secrets, merge origin, push, GitHub-Remote anlegen, Suite-Release) + clone
+```
+
+Kurzform nur Lage: `devsync.sh status`. Nur GitHub-Release der Suites: nach `ship` taggt `suite_release` `MeradosUG/Skill-Suite` und `maf4711/merados-skills`, wenn CHANGELOG eine ungetaggte Version hat.
+
+## Agent-Ablauf (OPEN / LEAVE / „alles rauf“)
+
+1. `devsync.sh status` — einmal Lage zeigen.
+2. Sofort `devsync.sh sync` (oder `ship` ohne Clone). **Nicht** auf User-Freigabe warten.
+3. Divergenz: **mergen** (`git merge --no-edit origin/<branch>`). Kein Rebase, kein ff-only, kein Force-Push.
+4. Repos ohne Remote: privates GitHub-Repo unter `maf4711/<name>` anlegen und pushen.
+5. Skill-Suite / merados-skills: nach Push GitHub Release aus CHANGELOG.
+6. App-CPR (Vercel / TestFlight) nur wenn das Repo das braucht — **REQUIRED SUB-SKILL:** `cpr`.
+
+Parallel: `DEVSYNC_JOBS` (Default = CPU, max 16). SSH BatchMode, `protocol.version=2`, kein Credential-Hang.
+
+## LaunchAgent (kein unattended Commit)
+
+`auto-sync.sh` / `com.merados.devsync`: alle **2 min** `push` dann `pull` (Merge). **Kein** auto-commit, kein clone. Log: `~/.cache/devsync/auto-sync.log`.
+
+```bash
 ~/.claude/skills/repo-sync/auto-sync.sh --now
-
-# Status des Agents
 launchctl print "gui/$(id -u)/com.merados.devsync" | head -20
-
-# Aus / Ein
-launchctl bootout "gui/$(id -u)/com.merados.devsync"
-launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.merados.devsync.plist
 ```
 
-Installation passiert mit `setup-mac.sh` (Schritt 6) oder manuell wie oben.
-## Was NICHT gesynct wird
+## Was nie ins Git geht
 
-Ehrlich ansagen, statt Vollständigkeit zu suggerieren:
+- `.env`, `*.pem` / `*.p8` / `*.key`, `AuthKey_*.p8`, `credentials.json`, `secrets.json`
+- Build-Schrott: `*.xcarchive`, `.build/`, `DerivedData`, `ruvector.db`, `.claude-flow/`
+- gitignorierte Artefakte (`node_modules`, lokale DBs)
+- Force-Push auf main, `--no-verify`, Amend publizierter Commits
+- Fremde Klone ohne Remote und ohne eigenen Commit — kein `gh repo create`
 
-- **Repos ohne Remote** — `status` listet sie unter „kein Remote". Wenn der User
-  sie syncen will: `gh repo create <name> --private --source=. --push` im Repo.
-- **Gitignorierte Dateien** — `.env`, Credentials, `node_modules`, lokale DBs.
-  Secrets gehören in 1Password/Keychain, nicht ins Repo. Niemals `.env` committen,
-  um „Sync zu ermöglichen".
-- **Uncommitted Changes** — per Definition.
+LaunchAgent committet nicht. Der Agent beim User-Befehl **ship/sync/cpr** schon — außer Secrets.
 
-## Nützliche Einzelabfragen
+## Nützliche Knöpfe
 
 ```bash
-# Was liegt in Repo X unpushed?
-git -C ~/Developer/<repo> log --branches --not --remotes --oneline
-
-# Divergenz gegen origin prüfen
-git -C ~/Developer/<repo> rev-list --left-right --count HEAD...@{u}
-
-# Andere Owner einbeziehen
-DEVSYNC_OWNERS="maf4711 MeradosUG NeuerOrg" ~/.claude/skills/repo-sync/devsync.sh status
+~/.claude/skills/repo-sync/devsync.sh status
+~/.claude/skills/repo-sync/devsync.sh ship     # commit+merge+push+release
+~/.claude/skills/repo-sync/devsync.sh cpr      # Alias
+DEVSYNC_JOBS=8 DEVSYNC_OWNERS="maf4711 MeradosUG" ~/.claude/skills/repo-sync/devsync.sh sync
 ```
 
-## Installation auf einem neuen Mac
+## Installation
 
-`setup-mac.sh` erledigt alles: Voraussetzungen prüfen, globale .gitignore
-setzen, Skill-Repo klonen, alle Skills verlinken, alle Repos holen.
-Idempotent — mehrfaches Ausführen ist gefahrlos.
+`setup-mac.sh` — Voraussetzungen, globale gitignore, Skills verlinken, Repos klonen, LaunchAgent. Idempotent.
 
 ```bash
-# Einmalig von Hand (braucht Browser bzw. Eingabe):
-gh auth login                       # SSH als Protokoll wählen
-
-# Danach:
+gh auth login    # SSH
 git clone git@github.com:maf4711/merados-skills.git ~/Developer/merados-skills
 bash ~/Developer/merados-skills/skills/repo-sync/setup-mac.sh
+# oder Skill-Suite:
+bash ~/Developer/Skill-Suite/install.sh
 ```
 
-Vorher ansehen, was passieren würde: `setup-mac.sh --check`.
-
-Anschließend Claude Code neu starten, damit die Skills geladen werden.
-
-Skills werden **verlinkt, nicht kopiert** — sonst driften die Macs auseinander
-und ein `git pull` im Skill-Repo bliebe wirkungslos. Updates danach:
-
-```bash
-git -C ~/Developer/merados-skills pull
-```
-
-Findet das Script ein Skill-Verzeichnis vor, das eine echte Kopie ist,
-überschreibt es diese **nicht**, sondern nennt den Befehl zum Ersetzen.
+Skills **verlinken**, nicht kopieren. Open-mac / leave-mac: dieser Skill (Lifecycle in `references/merged-from-open-mac.md`).

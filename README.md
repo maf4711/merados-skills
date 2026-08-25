@@ -36,11 +36,17 @@ npx skills add maf4711/merados-skills@merados-desktop
 npx skills add maf4711/merados-skills@merados-slack-advisor
 npx skills add maf4711/merados-skills@elon-algo
 npx skills add maf4711/merados-skills@dm80s80s
+npx skills add maf4711/merados-skills@repo-sync
+npx skills add maf4711/merados-skills@cpr
 ```
 
 ---
 
 ## Skills
+
+### repo-sync (`/repo-sync`) + cpr (`/cpr`)
+
+Schnellster Multi-Mac-Lauf: paralleles Commit (ohne Secrets/Build-Schrott), Merge, Push, GitHub-Release der Skill-Suites. Agent-Default `devsync.sh sync`. LaunchAgent alle 2 min nur push+pull-merge.
 
 ### DM80s80s (`/dm80s80s`)
 
