@@ -355,7 +355,7 @@ suite_release() {
     p && $0 ~ /^## \[/ {exit}
     p {print}
   ' "$r/CHANGELOG.md" 2>/dev/null)
-  gitx "$r" tag "$tag"
+  gitx "$r" tag -a "$tag" -m "$tag" 2>/dev/null || gitx "$r" tag "$tag" 2>/dev/null || true
   gitx "$r" push origin "$tag" 2>/dev/null || true
   if [ -n "$notes" ]; then
     gh release create "$tag" -R "$nwo" --title "$tag" --notes "$notes" 2>/dev/null \
