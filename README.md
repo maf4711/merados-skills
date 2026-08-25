@@ -44,7 +44,7 @@ npx skills add maf4711/merados-skills@cpr
 
 ## Skills
 
-### repo-sync (`/repo-sync`) + cpr (`/cpr`)
+### repo-sync (`/repo-sync`) + cpr (`/cpr` `/mcpr` `/mcprt`)
 
 Schnellster Multi-Mac-Lauf: paralleles Commit (ohne Secrets/Build-Schrott), Merge, Push, GitHub-Release der Skill-Suites. Agent-Default `devsync.sh sync`. LaunchAgent alle 2 min nur push+pull-merge.
 

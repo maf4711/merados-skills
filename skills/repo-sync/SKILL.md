@@ -1,72 +1,54 @@
 ---
 name: repo-sync
-description: Use when syncing ~/Developer git repos across Macs via GitHub, or when the user says /repo-sync, repos syncen, sync repos, ship to github, merge and cpr, commit push release all local repos, fastest sync, was ist unpushed, fehlende repos klonen, anderes macbook, zweiter mac, leave-mac, open-mac, danach repo-sync.
+description: Use when syncing ~/Developer across Macs via MacCluster Thunderbolt then GitHub, or when the user says /repo-sync, repos syncen, TB sync, thunderbolt, maccluster, inventarisieren, neueste daten, ship to github, merge and cpr, anderes macbook, leave-mac, open-mac.
 ---
 
 # repo-sync
 
-Hält `~/Developer` über mehrere Macs synchron. GitHub ist die einzige Wahrheit.
+Hält `~/Developer` über mehrere Macs synchron.
 
-Motor: `~/.claude/skills/repo-sync/devsync.sh` (nach `install.sh` auch via Skill-Suite).
-
-**Default für den Agenten: schnellster voller Lauf** — paralleles **Commit + Merge + Push + Release** alles, was lokal liegt. Nicht fragen, nicht ff-only, nicht rebase.
+**Transport-Reihenfolge (Agent-Default):** erst **MacCluster + Thunderbolt** (Inventar, dann nur neueste Dateien), danach GitHub ship. Motor TB: `maccluster`. Motor GitHub: `devsync.sh`.
 
 ```bash
 ~/.claude/skills/repo-sync/devsync.sh sync
-# = ship (commit ohne Secrets, merge origin, push, GitHub-Remote anlegen, Suite-Release) + clone
+# 1) maccluster tb/status + sync home --compare --preset developer
+# 2) maccluster sync home --preset developer --conflict-policy newer
+# 3) GitHub ship + clone
 ```
 
-Kurzform nur Lage: `devsync.sh status`. Nur GitHub-Release der Suites: nach `ship` taggt `suite_release` `MeradosUG/Skill-Suite` und `maf4711/merados-skills`, wenn CHANGELOG eine ungetaggte Version hat.
+Nur TB: `devsync.sh tb inventory` dann `devsync.sh tb sync`.  
+Nur GitHub: `devsync.sh ship`.
 
-## Agent-Ablauf (OPEN / LEAVE / „alles rauf“)
+**REQUIRED:** `maccluster` auf PATH (`~/.local/bin/maccluster`), `~/.config/maccluster/cluster.toml`, TB-Mesh (`sudo maccluster up`), SSH-Key auf `10.42.0.x`. Siehe maccluster-status.
 
-1. `devsync.sh status` — einmal Lage zeigen.
-2. Sofort `devsync.sh sync` (oder `ship` ohne Clone). **Nicht** auf User-Freigabe warten.
-3. Divergenz: **mergen** (`git merge --no-edit origin/<branch>`). Kein Rebase, kein ff-only, kein Force-Push.
-4. Repos ohne Remote: privates GitHub-Repo unter `maf4711/<name>` anlegen und pushen.
-5. Skill-Suite / merados-skills: nach Push GitHub Release aus CHANGELOG.
-6. App-CPR (Vercel / TestFlight) nur wenn das Repo das braucht — **REQUIRED SUB-SKILL:** `cpr`.
+## Agent-Ablauf
 
-Parallel: `DEVSYNC_JOBS` (Default = CPU, max 16). SSH BatchMode, `protocol.version=2`, kein Credential-Hang.
+1. **Inventarisieren** — `maccluster config validate`, `tb`, `status`, `doctor`, dann `maccluster sync home --compare --preset developer --conflict-policy newer`. Kein Write. Tabelle: only_local / only_remote / local_newer / remote_newer.
+2. **Nur neueste Daten über TB** — `maccluster sync home --preset developer --conflict-policy newer`. Apple `ditto` über die Bridge, **kein Delete**. Newest-wins. Nicht WLAN, nicht 169.254-Fallback als Default.
+3. **GitHub ship** — paralleles Commit (ohne Secrets) + Merge + Push + Suite-Release. **REQUIRED SUB-SKILL:** `cpr` für Vercel; TestFlight only on **mcprt**.
+4. Mesh isolated / Peers DOWN: Inventar trotzdem zeigen, dann `sudo maccluster up` nennen. GitHub-Ship nicht skippen.
 
-## LaunchAgent (kein unattended Commit)
+Nicht fragen, nicht ff-only, nicht rebase, nicht force-push.
 
-`auto-sync.sh` / `com.merados.devsync`: alle **2 min** `push` dann `pull` (Merge). **Kein** auto-commit, kein clone. Log: `~/.cache/devsync/auto-sync.log`.
+## LaunchAgent
 
-```bash
-~/.claude/skills/repo-sync/auto-sync.sh --now
-launchctl print "gui/$(id -u)/com.merados.devsync" | head -20
-```
+`auto-sync.sh`: alle **2 min** nur GitHub push+pull-merge. **Kein** auto-commit, **kein** TB-Home-Sync (dafür `maccluster service sync-install`).
 
 ## Was nie ins Git geht
 
-- `.env`, `*.pem` / `*.p8` / `*.key`, `AuthKey_*.p8`, `credentials.json`, `secrets.json`
-- Build-Schrott: `*.xcarchive`, `.build/`, `DerivedData`, `ruvector.db`, `.claude-flow/`
-- gitignorierte Artefakte (`node_modules`, lokale DBs)
-- Force-Push auf main, `--no-verify`, Amend publizierter Commits
-- Fremde Klone ohne Remote und ohne eigenen Commit — kein `gh repo create`
+- `.env`, Keys, xcarchive, `.build`, `ruvector.db`, `.claude-flow`
+- Force-Push, `--no-verify`, Amend publizierter Commits
 
-LaunchAgent committet nicht. Der Agent beim User-Befehl **ship/sync/cpr** schon — außer Secrets.
+TB-Kopie **darf** `.env` und dirty Work (gleiches LAN, `maccluster` Preset developer). GitHub nicht.
 
-## Nützliche Knöpfe
+## Knöpfe
 
 ```bash
-~/.claude/skills/repo-sync/devsync.sh status
-~/.claude/skills/repo-sync/devsync.sh ship     # commit+merge+push+release
-~/.claude/skills/repo-sync/devsync.sh cpr      # Alias
-DEVSYNC_JOBS=8 DEVSYNC_OWNERS="maf4711 MeradosUG" ~/.claude/skills/repo-sync/devsync.sh sync
+export PATH="$HOME/.local/bin:$PATH"
+maccluster tb && maccluster status
+~/.claude/skills/repo-sync/devsync.sh tb inventory
+~/.claude/skills/repo-sync/devsync.sh tb sync
+~/.claude/skills/repo-sync/devsync.sh ship
 ```
 
-## Installation
-
-`setup-mac.sh` — Voraussetzungen, globale gitignore, Skills verlinken, Repos klonen, LaunchAgent. Idempotent.
-
-```bash
-gh auth login    # SSH
-git clone git@github.com:maf4711/merados-skills.git ~/Developer/merados-skills
-bash ~/Developer/merados-skills/skills/repo-sync/setup-mac.sh
-# oder Skill-Suite:
-bash ~/Developer/Skill-Suite/install.sh
-```
-
-Skills **verlinken**, nicht kopieren. Open-mac / leave-mac: dieser Skill (Lifecycle in `references/merged-from-open-mac.md`).
+Mesh bringen: `sudo maccluster up` (einmal, Admin).
