@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # auto-sync – periodischer Multi-Mac Sync (LaunchAgent).
-# Push + Pull (Merge) alle 2 min. Commitet nie. Notification bei dirty/unpushed/Fehler.
+# Push + Pull (Merge) alle 2 min, danach Fast-Forward-Push in die mos-Nodes
+# (die haben keinen GitHub-Zugang). Commitet nie.
+# Notification bei dirty/unpushed/Node-Fehler.
 #
 #   auto-sync.sh           # normaler Lauf
 #   auto-sync.sh --now     # gleich + immer Status-Notification (Debug)
@@ -52,6 +54,48 @@ if ! bash "$DEVSYNC" pull; then
   log "pull returned non-zero"
 fi
 
+# ── Cluster-Nodes versorgen ───────────────────────────────────────────────
+# Die mos-Nodes haben keinen GitHub-Lesezugriff (jmerados1..4 sind nicht auf
+# MeradosUG/agent-swarm berechtigt). Statt vier GitHub-Zugaenge zu verwalten
+# verteilt dieser Mac: Fast-Forward-Push per SSH in ihre Repos.
+# Kein --force — git lehnt Nicht-Fast-Forward selbst ab, und
+# receive.denyCurrentBranch=updateInstead aktualisiert nur saubere Worktrees.
+NODES="${DEVSYNC_NODES:-mos1 mos2 mos3 mos4}"
+NODE_FAILS=$(mktemp "${TMPDIR:-/tmp}/devsync-nodefail.XXXXXX")
+
+push_node() {
+  local h="$1" repos name br r out fail=0
+  repos=$(ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "$h" '
+    for d in ~/Developer/*/.git; do
+      [ -e "$d" ] || continue
+      r=${d%/.git}
+      git -C "$r" config receive.denyCurrentBranch updateInstead 2>/dev/null
+      echo "$(basename "$r") $(git -C "$r" branch --show-current 2>/dev/null)"
+    done' 2>/dev/null) || { log "node $h: nicht erreichbar"; return 0; }
+
+  while read -r name br; do
+    [ -n "$name" ] && [ -n "$br" ] || continue
+    r="$DEV/$name"
+    [ -d "$r/.git" ] || continue
+    git -C "$r" rev-parse --verify -q "$br" >/dev/null 2>&1 || continue
+    if out=$(git -C "$r" push "$h:Developer/$name" "$br:$br" 2>&1); then
+      grep -qiE 'up-to-date|aktuell' <<<"$out" || log "node $h: $name $br aktualisiert"
+    else
+      log "node $h: $name $br FEHLER – $(grep -m1 -iE 'rejected|error|fatal' <<<"$out")"
+      fail=$((fail + 1))
+    fi
+  done <<<"$repos"
+
+  [ "$fail" != 0 ] && echo "$h" >>"$NODE_FAILS"
+  return 0
+}
+
+for h in $NODES; do push_node "$h" & done
+wait
+node_fail_names=$(tr '\n' ' ' <"$NODE_FAILS" | sed 's/ *$//')
+rm -f "$NODE_FAILS"
+[ -n "$node_fail_names" ] && log "node-push fehlgeschlagen: $node_fail_names"
+
 # Status auswerten (kurz, ohne volle gh-remote-Liste — nur lokal)
 dirty=0
 unpushed=0
@@ -85,12 +129,16 @@ done
 
 log "result: dirty=$dirty unpushed=$unpushed"
 
-if [ "$dirty" -gt 0 ] || [ "$unpushed" -gt 0 ]; then
+if [ "$dirty" -gt 0 ] || [ "$unpushed" -gt 0 ] || [ -n "$node_fail_names" ]; then
   body=""
   [ "$dirty" -gt 0 ] && body="${dirty} dirty (${dirty_names[*]})"
   if [ "$unpushed" -gt 0 ]; then
     [ -n "$body" ] && body="$body · "
     body="${body}${unpushed} unpushed (${unpushed_names[*]})"
+  fi
+  if [ -n "$node_fail_names" ]; then
+    [ -n "$body" ] && body="$body · "
+    body="${body}node-push failed: ${node_fail_names}"
   fi
   # Notification-Body kürzen (macOS limit ~256)
   body=$(printf '%.200s' "$body")

@@ -32,7 +32,9 @@ Nicht fragen, nicht ff-only, nicht rebase, nicht force-push.
 
 ## LaunchAgent
 
-`auto-sync.sh`: alle **2 min** nur GitHub push+pull-merge. **Kein** auto-commit, **kein** TB-Home-Sync (dafür `maccluster service sync-install`).
+`auto-sync.sh`: alle **2 min** GitHub push+pull-merge, danach **Node-Push**. **Kein** auto-commit, **kein** TB-Home-Sync (dafür `maccluster service sync-install`).
+
+**Node-Push:** für Nodes ohne GitHub-Lesezugriff verteilt dieser Mac per SSH — je Repo unter `~/Developer` auf dem Node wird der gleichnamige lokale Branch fast-forward gepusht. Kein `--force`; ein Node mit eigenen Commits bekommt einen abgelehnten Push, der geloggt und in der Notification benannt wird. `receive.denyCurrentBranch=updateInstead` aktualisiert nur saubere Worktrees. Node-Liste über `DEVSYNC_NODES` (Default `mos1 mos2 mos3 mos4`).
 
 ## Was nie ins Git geht
 
