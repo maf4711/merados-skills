@@ -1,9 +1,9 @@
 ---
 name: cpr
-description: Use when the user says cpr, /cpr, mcpr, /mcpr, mcprt, /mcprt, merge cpr, merge and cpr, commit push release, commit+push+release, Skill Suite CPR, or CPR Skill Suite.
+description: Use when the user says cpr, /cpr, mcpr, /mcpr, mcprt, /mcprt, crpa, /crpa, merge cpr, merge and cpr, commit push release, commit+push+release, Skill Suite CPR, or CPR Skill Suite.
 ---
 
-# cpr / mcpr / mcprt
+# cpr / mcpr / mcprt / crpa
 
 Not a question. Run the matching row. Do not ask whether to push or release.
 
@@ -12,8 +12,9 @@ Not a question. Run the matching row. Do not ask whether to push or release.
 | **cpr** | commit + merge `origin` + push + production release | no |
 | **mcpr** | merge the open PR (or current branch) into the production branch, then **cpr** | no |
 | **mcprt** | **mcpr** + TestFlight (`intern` + `Extern`) | yes |
+| **crpa** | **cpr** + release rolled out to **every cluster member** (see below) | no |
 
-Aliases: `merge cpr` / `merge and cpr` → **mcpr**. `merge cpr tf` / `cpr tf` / `ship including TestFlight` → **mcprt**.
+Aliases: `merge cpr` / `merge and cpr` → **mcpr**. `merge cpr tf` / `cpr tf` / `ship including TestFlight` → **mcprt**. `maccluster-castle` → **crpa**.
 
 **REQUIRED SUB-SKILL:** `repo-sync` for multi-repo / `~/Developer` ship. `git-commit` for message shape. TestFlight details: this file + `testflight`.
 
@@ -30,6 +31,21 @@ Canonical copy: `~/Developer/Skill-Suite/skills/cpr/SKILL.md`. Copy public subse
    - **merados-skills** (`maf4711/merados-skills`): same ship for the npx-public subset.
    - **Web/API** (Vercel): `npx vercel deploy --prod --yes --scope merad-os` so `alpha.merados.com` moves. Confirm the alias, then smoke the changed endpoint.
 6. **TestFlight (mcprt only)** — iOS / `ios-native/`. Next build = latest App Store Connect version + 1. Then `./scripts/release-ios.sh --build-number N`. Internal group is `intern` (all builds); `push-beta.sh` adds to `Extern`. There is no group named `Beta`. **cpr** and **mcpr** stop after production web/suite release.
+
+## crpa — cluster rollout (maccluster & friends)
+
+After the normal **cpr** release, roll the release onto every cluster member. User definition 2026-08-29.
+
+1. Local: `./install.sh`, then `maccluster --version` must equal the released tag.
+2. For every `role=peer` node in `~/.config/maccluster/cluster.toml`:
+   `MACCLUSTER_SRC=~/Developer/maccluster maccluster remote-install <peer-ip>`
+   — `MACCLUSTER_SRC` is mandatory: without it the wheel is built from the stale
+   fabrik overlay checkout (`~/Developer/fabrik/projects/maccluster`,
+   maf4711/maccluster#15) and ships wrong code under a higher version number.
+3. Verify per node over the TB bridge: `ssh <peer> 'maccluster --version'` must
+   equal the released version.
+4. Unreachable members (no TB link, powered off) are **named in the result**,
+   never silently skipped.
 
 ## Skill Suite + CPR Skill Suite
 
@@ -57,3 +73,4 @@ Publishing a skill **is** CPR of both suites:
 - Skill Suite: tag + GitHub Release + `install.sh` if this was a skill publish.
 - Production URL serves the change when the repo is a web/API app (verified).
 - **mcprt only:** TestFlight has the new build in `intern`+`Extern`, **or** TestFlight is blocked by a stated Xcode/ASC error.
+- **crpa only:** every reachable cluster member reports the released version; unreachable members are named.
