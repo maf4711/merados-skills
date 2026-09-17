@@ -20,7 +20,7 @@ Shell-Aliases (in Dotfiles / `~/.zshrc`):
 
 ```zsh
 alias devsync='~/.claude/skills/repo-sync/devsync.sh'
-alias leave-mac='devsync status && devsync ship'
+alias leave-mac='~/.claude/skills/open-mac/leave-mac.sh'
 alias open-mac='devsync status && devsync sync'   # sync = ship + clone
 ```
 
