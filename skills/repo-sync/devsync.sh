@@ -3,7 +3,8 @@
 # Bash 3.2-kompatibel (LaunchAgent nutzt /bin/bash).
 #
 #   devsync status   Übersicht: dirty / unpushed / fehlende Repos
-#   devsync clone    fehlende GitHub-Repos parallel klonen
+#   devsync clone    fehlende GitHub-Origins parallel klonen
+#                    (gleicher Name, zwei Orgs → $DEV/<owner>--<name>)
 #   devsync pull     Fetch + Merge (kein ff-only, kein Rebase)
 #   devsync push     lokale Commits parallel pushen
 #   devsync ship     Commit (ohne Secrets) + Merge + Push + Remote anlegen
@@ -15,7 +16,7 @@
 set -uo pipefail
 
 DEV="${DEVSYNC_ROOT:-$HOME/Developer}"
-OWNERS="${DEVSYNC_OWNERS:-maf4711 MeradosUG}"
+OWNERS="${DEVSYNC_OWNERS:-maf4711 MeradosUG FinfuxUG}"
 CREATE_OWNER="${DEVSYNC_CREATE_OWNER:-maf4711}"
 JOBS="${DEVSYNC_JOBS:-}"
 export GIT_TERMINAL_PROMPT=0
@@ -70,10 +71,18 @@ local_repos() {
   fi
 }
 
+nwo_norm() {
+  printf '%s' "$1" | sed -E 's#^(ssh://)?git@github\.com[:/]##; s#^https://github\.com/##; s#\.git$##' | tr '[:upper:]' '[:lower:]'
+  printf '\n'
+}
+
 remote_repos() {
-  local o
+  local o flags
+  flags="--no-archived"
+  [ "${DEVSYNC_ARCHIVED:-0}" = 1 ] && flags=""
   for o in $OWNERS; do
-    gh repo list "$o" --limit 500 --no-archived \
+    # shellcheck disable=SC2086
+    gh repo list "$o" --limit 500 $flags \
       --json nameWithOwner,sshUrl --jq '.[] | "\(.nameWithOwner)\t\(.sshUrl)"'
   done
 }
@@ -81,8 +90,7 @@ remote_repos() {
 local_remotes() {
   local r
   while read -r r; do
-    gitx "$r" remote get-url origin 2>/dev/null \
-      | sed -E 's#^(ssh://)?git@github\.com[:/]##; s#^https://github\.com/##; s#\.git$##'
+    nwo_norm "$(gitx "$r" remote get-url origin 2>/dev/null || true)"
   done < <(local_repos)
 }
 
@@ -110,6 +118,8 @@ is_skip_path() {
     */.build/*|.build/*|*/DerivedData/*) return 0 ;;
     *.app/*|*.dSYM/*) return 0 ;;
     ruvector.db|*/ruvector.db) return 0 ;;
+    *.rvf|*/*.rvf) return 0 ;;
+    _fabrik/attach.json|*/_fabrik/attach.json|_fabrik/state.json|*/_fabrik/state.json) return 0 ;;
     */.claude-flow/*|.claude-flow/*) return 0 ;;
   esac
   case "$base" in
@@ -147,37 +157,75 @@ cmd_status() {
   echo "  $dirty dirty, $unpushed unpushed, $noremote ohne Remote"
 
   bold "Auf GitHub, aber nicht lokal"
-  local missing=0 have nwo
+  local missing=0 have nwo want name owner
   have=$(local_remotes)
   while IFS=$'\t' read -r nwo _; do
-    grep -qxF "$nwo" <<<"$have" && continue
-    [ -d "$DEV/${nwo##*/}" ] && continue
-    echo "  + $nwo"; missing=$((missing + 1))
+    want=$(printf '%s' "$nwo" | tr '[:upper:]' '[:lower:]')
+    grep -qxF "$want" <<<"$have" && continue
+    name="${nwo##*/}"
+    owner="${nwo%%/*}"
+    if [ -e "$DEV/$name" ]; then
+      echo "  + $nwo → ${owner}--${name}"
+    else
+      echo "  + $nwo"
+    fi
+    missing=$((missing + 1))
   done < <(remote_repos)
   [ "$missing" = 0 ] && ok "  – keine" || echo "  $missing fehlend → devsync clone"
 }
 
+# Empty dest = already present. owner--name if $DEV/<repo> is taken by another origin.
+clone_dest() {
+  local nwo="$1" owner name dest existing want
+  owner="${nwo%%/*}"
+  name="${nwo##*/}"
+  want=$(printf '%s' "$nwo" | tr '[:upper:]' '[:lower:]')
+  dest="$DEV/$name"
+  if [ -e "$dest" ]; then
+    if [ -d "$dest/.git" ] || [ -f "$dest/.git" ]; then
+      existing=$(nwo_norm "$(gitx "$dest" remote get-url origin 2>/dev/null || true)")
+      [ "$existing" = "$want" ] && { echo ""; return 0; }
+    fi
+    dest="$DEV/${owner}--${name}"
+  fi
+  if [ -e "$dest" ]; then
+    if [ -d "$dest/.git" ] || [ -f "$dest/.git" ]; then
+      existing=$(nwo_norm "$(gitx "$dest" remote get-url origin 2>/dev/null || true)")
+      [ "$existing" = "$want" ] && { echo ""; return 0; }
+    fi
+    err "  kein Pfad frei für $nwo"
+    echo ""
+    return 1
+  fi
+  echo "$dest"
+}
+
 clone_one() {
-  local nwo="$1" ssh="$2" target="$DEV/${nwo##*/}"
-  [ -e "$target" ] && return 0
-  bold "clone $nwo"
+  local nwo="$1" ssh="$2" target
+  target=$(clone_dest "$nwo") || return 1
+  [ -z "$target" ] && return 0
+  bold "clone $nwo → $target"
   git $GIT_FAST clone --jobs=8 "$ssh" "$target" || err "  fehlgeschlagen: $nwo"
 }
 
+clone_line() {
+  local line="$1" nwo ssh
+  nwo="${line%%	*}"
+  ssh="${line#*	}"
+  clone_one "$nwo" "$ssh"
+}
+
 cmd_clone() {
-  local have nwo ssh
+  local have
   have=$(local_remotes)
-  while IFS=$'\t' read -r nwo ssh; do
-    grep -qxF "$nwo" <<<"$have" && continue
-    [ -e "$DEV/${nwo##*/}" ] && continue
-    echo "$nwo	$ssh"
-  done < <(remote_repos) | while IFS=$'\t' read -r nwo ssh; do
-    clone_one "$nwo" "$ssh" &
-    if [ "$(jobs | wc -l | tr -d ' ')" -ge "$(njobs)" ]; then
-      wait
-    fi
-  done
-  wait
+  run_pool clone_line < <(
+    while IFS=$'\t' read -r nwo ssh; do
+      [ -z "$nwo" ] && continue
+      want=$(printf '%s' "$nwo" | tr '[:upper:]' '[:lower:]')
+      grep -qxF "$want" <<<"$have" && continue
+      printf '%s\t%s\n' "$nwo" "$ssh"
+    done < <(remote_repos)
+  )
 }
 
 diagnose() {
@@ -264,10 +312,15 @@ push_one() {
   local r="$1" name u
   name=$(basename "$r")
   gitx "$r" remote get-url origin >/dev/null 2>&1 || return 0
+  if ! on_default_branch "$r"; then
+    return 0
+  fi
   u=$(unpushed_count "$r")
   [ "$u" = 0 ] && return 0
   bold "push $name ($u)"
-  if gitx "$r" push --all --tags 2>/dev/null; then
+  # Nur die aktuelle Branch: "--all" hat lokale Wegwerf-Branches nach GitHub
+  # getragen, wo sie neben echten Feature-Branches stehen.
+  if gitx "$r" push -u origin HEAD --tags 2>/dev/null; then
     ok "  $name"
   else
     diagnose_push "$r" "$name"
@@ -315,12 +368,60 @@ commit_msg_for() {
   esac
 }
 
+# Ist das Repo mitten in einer Operation? Dann ist nichts davon shipbar.
+repo_busy() {
+  local r="$1" g
+  g=$(gitx "$r" rev-parse --git-dir 2>/dev/null) || return 1
+  [ -d "$r/$g/rebase-merge" ] || [ -d "$r/$g/rebase-apply" ] && return 0
+  [ -f "$r/$g/MERGE_HEAD" ] || [ -f "$r/$g/CHERRY_PICK_HEAD" ] || [ -f "$r/$g/BISECT_LOG" ] && return 0
+  gitx "$r" symbolic-ref -q HEAD >/dev/null 2>&1 || return 0   # detached HEAD
+  return 1
+}
+
+# Auf welchem Branch darf die Automation ueberhaupt arbeiten?
+#
+# Nur der Default-Branch. Feature-Branches gehoeren dem Menschen: ein
+# automatischer Commit dort kippt den Inhalt eines offenen PR um oder schiebt
+# fremde Dateien hinein, die zufaellig im Baum lagen. Am 27.08.2026 wurden so
+# drei Mal Aenderungen veroeffentlicht, bevor jemand sie ansehen konnte.
+default_branch() {
+  local r="$1" b c
+  b=$(gitx "$r" symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)
+  b="${b#origin/}"
+  if [ -n "$b" ]; then echo "$b"; return 0; fi
+  for c in main master; do
+    if gitx "$r" show-ref -q --verify "refs/heads/$c"; then echo "$c"; return 0; fi
+  done
+  echo main
+}
+
+on_default_branch() {
+  local r="$1" cur def
+  cur=$(gitx "$r" symbolic-ref -q --short HEAD 2>/dev/null) || return 1
+  def=$(default_branch "$r")
+  [ "$cur" = "$def" ]
+}
+
 commit_one() {
-  local r="$1" name n staged msg
+  local r="$1" name n staged msg untracked
   name=$(basename "$r")
   gitx "$r" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
   [ "$(dirty_count "$r")" = 0 ] && return 0
-  gitx "$r" add -A
+  if repo_busy "$r"; then
+    warn "  $name – Rebase/Merge/detached HEAD, kein Commit"
+    return 0
+  fi
+  if ! on_default_branch "$r"; then
+    warn "  $name – auf $(gitx "$r" symbolic-ref -q --short HEAD 2>/dev/null), nicht $(default_branch "$r"): kein Commit"
+    return 0
+  fi
+  # add -u statt add -A: nur bereits getrackte Dateien. Ungetracktes ist
+  # Zwischenstand oder Zufall — am 30.05.2026 waren es IBKR-PII-PDFs, am
+  # 26.08.2026 verworfene Scratch-Module. Wer eine neue Datei versionieren
+  # will, macht "git add" selbst.
+  gitx "$r" add -u
+  untracked=$(gitx "$r" ls-files --others --exclude-standard | wc -l | tr -d ' ')
+  [ "$untracked" != 0 ] && warn "  $name – $untracked ungetrackte Datei(en) NICHT committet"
   unstage_skips "$r"
   staged=$(gitx "$r" diff --cached --name-only | wc -l | tr -d ' ')
   if [ "$staged" = 0 ]; then
@@ -384,7 +485,9 @@ ship_one() {
   else
     diagnose "$r" "$name" "$out"
   fi
-  if gitx "$r" push -u origin HEAD --tags 2>/dev/null && gitx "$r" push --all 2>/dev/null; then
+  # Nur die aktuelle Branch. "push --all" hat Wegwerf-Branches mit
+  # Zwischenstaenden auf GitHub geschoben, wo sie wie Arbeitsergebnis aussehen.
+  if gitx "$r" push -u origin HEAD --tags 2>/dev/null; then
     ok "  ship $name"
     suite_release "$r"
   else
