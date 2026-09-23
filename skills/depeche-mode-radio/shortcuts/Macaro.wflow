@@ -10,10 +10,10 @@
 			<key>WFWorkflowActionParameters</key>
 			<dict>
 				<key>WFCommentActionText</key>
-				<string>Macaro: 80s80s Depeche Mode auf allen HomePods (ohne Mac).
-1) Sender starten  2) HomePods per AirPlay 2 Add hinzufügen.
-CarPlay: Wenn iPhone im Auto verbunden ist, geht Ton primär ins Auto — HomePods + CarPlay gleichzeitig als EINE Gruppe unterstützt Apple nicht. Zuhause: alle HomePods. Auto: CarPlay (iPhone-Ausgabe).
-Falls ein Speaker leer ist: Aktion antippen und HomePod neu wählen.</string>
+				<string>Macaro: 80s80s Depeche Mode auf allen Castle-HomePods.
+1) Sender starten  2) AirPlay-2 Set Küche, dann Add: Back, Badezimmer, Büro, Heimkino, Schlafzimmer, Wohnzimmer.
+CarPlay+HomePods als eine Gruppe kann Apple nicht — Auto: Kurzbefehl Macaro Car.
+Offline-Pods (z.B. Schlafzimmer) werden übersprungen.</string>
 			</dict>
 		</dict>
 		<dict>
@@ -52,6 +52,17 @@ Falls ein Speaker leer ist: Aktion antippen und HomePod neu wählen.</string>
 					<key>WFSerializationType</key>
 					<string>WFTextTokenAttachment</string>
 				</dict>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.delay</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>D4E18B0A-7C22-5A11-9F44-2B8E6C1D0A77</string>
+				<key>WFDelayTime</key>
+				<real>2</real>
 			</dict>
 		</dict>
 		<dict>
@@ -137,6 +148,28 @@ Falls ein Speaker leer ist: Aktion antippen und HomePod neu wählen.</string>
 					<string>Büro</string>
 					<key>routeUID</key>
 					<string>277A3E29-23DF-5A02-8128-19DF3DA359B4</string>
+				</dict>
+				<key>WFMediaRouteOperation</key>
+				<string>Add</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.setplaybackdestination</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>A7C41E2B-0F3D-5B88-9E21-6C0D8A4F1B90</string>
+				<key>WFMediaRoute</key>
+				<dict>
+					<key>groupUID</key>
+					<string>8F3A1C6E-2B47-5D90-A1E4-9C7B5D2E8F01</string>
+					<key>isLocalDevice</key>
+					<false/>
+					<key>routeName</key>
+					<string>Heimkino</string>
+					<key>routeUID</key>
+					<string>8F3A1C6E-2B47-5D90-A1E4-9C7B5D2E8F01</string>
 				</dict>
 				<key>WFMediaRouteOperation</key>
 				<string>Add</string>

@@ -38,7 +38,7 @@ Sender: [80s80s Depeche Mode](https://music.apple.com/de/station/80s80s-depeche-
 
 Der Kurzbefehl enthält eure HomePod-Namen:
 
-`Küche` (primär), dann Add: `Back`, `Badezimmer`, `Büro`, `Schlafzimmer`, `Wohnzimmer`
+`Küche` (primär), dann Add: `Back`, `Badezimmer`, `Büro`, `Heimkino`, `Schlafzimmer`, `Wohnzimmer`
 
 **Küche** und **Wohnzimmer** haben echte Route-IDs aus deinem System.  
 Die anderen können beim ersten Mal leer sein → einmal im Kurzbefehl nachziehen:
