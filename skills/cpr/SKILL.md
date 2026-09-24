@@ -1,9 +1,9 @@
 ---
 name: cpr
-description: Use when the user says cpr, /cpr, mcpr, /mcpr, mcprt, /mcprt, crpa, /crpa, merge cpr, merge and cpr, commit push release, commit+push+release, Skill Suite CPR, or CPR Skill Suite.
+description: Use when the user says cpr, /cpr, mcpr, /mcpr, cprt, /cprt, mcprt, /mcprt, crpa, /crpa, merge cpr, merge and cpr, commit push release, commit+push+release, Skill Suite CPR, or CPR Skill Suite.
 ---
 
-# cpr / mcpr / mcprt / crpa
+# cpr / cprt / mcpr / mcprt / crpa
 
 Not a question. Run the matching row. Do not ask whether to push or release.
 
@@ -11,10 +11,11 @@ Not a question. Run the matching row. Do not ask whether to push or release.
 |---|---|---|
 | **cpr** | commit + merge `origin` + push + production release | no |
 | **mcpr** | merge the open PR (or current branch) into the production branch, then **cpr** | no |
-| **mcprt** | **mcpr** + TestFlight (`intern` + `Extern`) | yes |
+| **cprt** | **cpr** + TestFlight for **every iOS app in the release repository** (`intern` + `Extern`) | all iOS apps |
+| **mcprt** | **mcpr** + the same complete iOS TestFlight release | all iOS apps |
 | **crpa** | **cpr** + release rolled out to **every cluster member** (see below) | no |
 
-Aliases: `merge cpr` / `merge and cpr` → **mcpr**. `merge cpr tf` / `cpr tf` / `ship including TestFlight` → **mcprt**. `maccluster-castle` → **crpa**.
+Aliases: `merge cpr` / `merge and cpr` → **mcpr**. `merge cpr tf` → **mcprt**. `cpr tf` / `ship including TestFlight` → **cprt**. `maccluster-castle` → **crpa**.
 
 **REQUIRED SUB-SKILL:** `repo-sync` for multi-repo / `~/Developer` ship. `git-commit` for message shape. TestFlight details: this file + `testflight`.
 
@@ -30,7 +31,12 @@ Canonical copy: `~/Developer/Skill-Suite/skills/cpr/SKILL.md`. Copy public subse
    - **Skill-Suite** (`MeradosUG/Skill-Suite`): save skills here, bump `CHANGELOG.md`, `python3 scripts/generate_index.py`, commit, merge, push, `gh release create vX.Y.Z`, then `./install.sh`.
    - **merados-skills** (`maf4711/merados-skills`): same ship for the npx-public subset.
    - **Web/API** (Vercel): `npx vercel deploy --prod --yes --scope merad-os` so `alpha.merados.com` moves. Confirm the alias, then smoke the changed endpoint.
-6. **TestFlight (mcprt only)** — iOS / `ios-native/`. Next build = latest App Store Connect version + 1. Then `./scripts/release-ios.sh --build-number N`. Internal group is `intern` (all builds); `push-beta.sh` adds to `Extern`. There is no group named `Beta`. **cpr** and **mcpr** stop after production web/suite release.
+6. **TestFlight (cprt / mcprt)** — release **every independent iOS application in the scoped repository**, even if its native source did not change. Discover iOS application targets and validate the release manifest against them before uploads; never silently ship only the default scheme. App extensions, test bundles and embedded watch companions are not separate iOS apps; archive them with their owning app. tvOS, visionOS and unrelated repositories are outside this default unless requested.
+   - Use each app’s own scheme, bundle ID and App Store Connect app ID. Query that app’s iOS builds and choose its highest numeric build number + 1; API errors must stop that app, not fall back to a local number. Never reuse one app’s number/identity across all apps.
+   - Prefer a repository multi-app entry point. In alpha-merados: `./scripts/release-ios.sh --submit-review` releases AlphaMerados and MeradosAnalysis. `--app <scheme>` is for an explicitly requested subset or retrying a named failed app; it does not satisfy the full cprt by itself. Do not pass a global `--build-number` to an all-app release.
+   - Process archives sequentially when sharing generated Xcode project/build paths. Continue/report independent apps if one fails; return failure until every requested app is accounted for.
+   - Verify VALID processing, export compliance, localized test notes and membership/access in both `intern` and `Extern` for every app. `intern` may have automatic access to all builds. There is no group named `Beta`. Submit a required TestFlight beta review as part of the authorized external release; do not publish to the live App Store. Distinguish group assignment, review pending and actual `IN_BETA_TESTING`.
+   - **cpr** and **mcpr** stop after production web/suite release.
 
 ## crpa — cluster rollout (maccluster & friends)
 
@@ -58,10 +64,11 @@ Publishing a skill **is** CPR of both suites:
 5. GitHub Release from CHANGELOG tag (`devsync` `suite_release` does this for those two remotes).
 6. `~/Developer/Skill-Suite/install.sh` so `~/.claude`, `~/.grok`, `~/.agents`, `~/.codex` point at the suite.
 
-## alpha-merados TestFlight (mcprt — what actually works)
+## alpha-merados TestFlight (cprt / mcprt — all iOS apps)
 
+- Required app inventory: `AlphaMerados` / `com.merados.alpha` / ASC `6762538440`; `MeradosAnalysis` / `com.merados.analysis` / ASC `6804377601`. Keep the repository manifest and iOS targets in sync.
 - ASC key: `~/.appstoreconnect/private_keys/AuthKey_WA46CWAG8B.p8` (issuer in `ios-native/scripts/archive.sh`).
-- Homebrew `rsync` 3.5 breaks `exportArchive`. Export with `PATH` putting `/usr/bin` first. Then `asc.py` needs PyJWT (`/Users/a321/kubera-venv/bin` **after** export, or call that `python3` explicitly).
+- Homebrew `rsync` 3.5 breaks `exportArchive`. Export with `PATH` putting `/usr/bin` first. `asc.py` needs a Python interpreter with PyJWT; verify the installed interpreter instead of assuming a machine-specific virtualenv path.
 - **Xcode beta cannot upload** (App Store Connect 90534). Need Release/RC Xcode at `/Applications/Xcode.app`. If only beta: still commit + push + Vercel; say TestFlight is blocked. Do not call the simulator the release.
 - Query ASC for the next build number; do not trust `project.yml`.
 - `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
@@ -72,5 +79,5 @@ Publishing a skill **is** CPR of both suites:
 - Commit is on the remote (merge completed or conflict reported, never silent skip).
 - Skill Suite: tag + GitHub Release + `install.sh` if this was a skill publish.
 - Production URL serves the change when the repo is a web/API app (verified).
-- **mcprt only:** TestFlight has the new build in `intern`+`Extern`, **or** TestFlight is blocked by a stated Xcode/ASC error.
+- **cprt / mcprt:** report one row per discovered iOS app: bundle, build number, upload/processing, internal state and external state. No all-app success if an app was omitted or failed. Pending Apple review is explicitly pending, not available. A named Xcode/ASC blocker must identify the affected app; successful sibling releases remain reported.
 - **crpa only:** every reachable cluster member reports the released version; unreachable members are named.
