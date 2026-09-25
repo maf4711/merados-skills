@@ -7,22 +7,22 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/bash</string>
-		<string>/Users/a321/.claude/skills/repo-sync/auto-sync.sh</string>
+		<string>__DEVSYNC_HOME__/.claude/skills/repo-sync/auto-sync.sh</string>
 	</array>
 	<key>StartInterval</key>
 	<integer>120</integer>
 	<key>RunAtLoad</key>
 	<false/>
 	<key>StandardOutPath</key>
-	<string>/Users/a321/.cache/devsync/launchd.out.log</string>
+	<string>__DEVSYNC_HOME__/.cache/devsync/launchd.out.log</string>
 	<key>StandardErrorPath</key>
-	<string>/Users/a321/.cache/devsync/launchd.err.log</string>
+	<string>__DEVSYNC_HOME__/.cache/devsync/launchd.err.log</string>
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>PATH</key>
 		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
 		<key>HOME</key>
-		<string>/Users/a321</string>
+		<string>__DEVSYNC_HOME__</string>
 	</dict>
 	<!-- Nur im User-Kontext (Notifications + SSH-Agent) -->
 	<key>ProcessType</key>

@@ -149,8 +149,8 @@ if [ -f "$PLIST_SRC" ]; then
   if do_it "LaunchAgent installieren"; then
     mkdir -p "$HOME/Library/LaunchAgents" "$HOME/.cache/devsync"
     chmod +x "$HERE/auto-sync.sh" 2>/dev/null || true
-    # HOME-Pfad in der Plist an diesen User anpassen (Template nutzt /Users/a321)
-    sed "s|/Users/a321|$HOME|g" "$PLIST_SRC" > "$PLIST_DST"
+    # Platzhalter __DEVSYNC_HOME__ (und alte /Users/a321-Templates) auf diesen User.
+    sed -e "s|__DEVSYNC_HOME__|$HOME|g" -e "s|/Users/a321|$HOME|g" "$PLIST_SRC" > "$PLIST_DST"
     launchctl bootout "gui/$(id -u)/com.merados.devsync" 2>/dev/null || true
     launchctl bootstrap "gui/$(id -u)" "$PLIST_DST" 2>/dev/null \
       || launchctl load -w "$PLIST_DST" 2>/dev/null || true
@@ -160,8 +160,42 @@ else
   warn "com.merados.devsync.plist fehlt, übersprungen"
 fi
 
+# --------------------------------------------------------------------------- #
+step "7/7  Skill-Suite und Release-Werkzeuge"
+# Clone holt MeradosUG/Skill-Suite mit. install.sh verlinkt Claude, Grok,
+# Codex und Agents. Release-Prüfungen sind Warnungen: ein Mac kann Repos
+# schon bearbeiten, bevor Notarize-Keys liegen.
+
+SUITE="$DEV/Skill-Suite"
+if [ -d "$SUITE/.git" ]; then
+  if do_it "Skill-Suite install.sh"; then
+    bash "$SUITE/install.sh" && ok "Skills nach ~/.claude ~/.grok ~/.codex ~/.agents verlinkt"
+  fi
+else
+  warn "Skill-Suite fehlt noch. Nach gh auth: $HERE/devsync.sh clone && bash ~/Developer/Skill-Suite/install.sh"
+fi
+
+command -v brew >/dev/null 2>&1 && ok "Homebrew $(brew --prefix)" || warn "Homebrew fehlt — Formula-Releases brauchen brew"
+if [ -d /Applications/Xcode.app/Contents/Developer ]; then
+  ok "Release-Xcode: /Applications/Xcode.app"
+else
+  warn " /Applications/Xcode.app fehlt — App-Store-Upload nicht von der Xcode-Beta"
+fi
+if [ -f "$HOME/.appstoreconnect/private_keys/AuthKey_5BXD2V69GS.p8" ]; then
+  ok "ASC-Key 5BXD2V69GS liegt lokal"
+else
+  warn "ASC-Key fehlt: ~/.appstoreconnect/private_keys/AuthKey_5BXD2V69GS.p8 von einem bestehenden Mac kopieren (AirDrop/scp, nie Git)"
+fi
+if security find-identity -v -p codesigning 2>/dev/null | grep -q "K63X3ZTV3Q"; then
+  ok "Codesign-Identität Team K63X3ZTV3Q"
+else
+  warn "Kein Zertifikat für Team K63X3ZTV3Q — in Xcode mit foellmer@mac.com anmelden"
+fi
+command -v vercel >/dev/null 2>&1 && ok "vercel CLI vorhanden" || warn "vercel fehlt — für Web-Production: brew install vercel && vercel login"
+
 step "Fertig."
-echo "  Claude Code neu starten, damit die Skills geladen werden."
+echo "  Claude Code und Grok neu starten, damit die Skills geladen werden."
 echo "  Danach:  /repo-sync   oder   ~/.claude/skills/repo-sync/devsync.sh status"
+echo "  Vertrag pro Repo: ~/Developer/<repo>/MULTI-MAC.md"
 echo "  Auto:    launchctl print gui/\$(id -u)/com.merados.devsync"
 echo "  Log:     ~/.cache/devsync/auto-sync.log"

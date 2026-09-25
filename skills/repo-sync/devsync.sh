@@ -59,16 +59,50 @@ gitx() {
   git $GIT_FAST -C "$r" "$@"
 }
 
+# Linked worktrees share objects and tags with the main checkout. Shipping
+# them as separate repos retries the same push and reports tag collisions
+# as branch-protection failures.
+is_linked_worktree() {
+  local r="$1" gd common
+  gd=$(git -C "$r" rev-parse --path-format=absolute --git-dir 2>/dev/null) || return 1
+  common=$(git -C "$r" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+  [ "$gd" != "$common" ]
+}
+
 local_repos() {
   local d
   for d in "$DEV"/*/; do
     if [ -d "$d/.git" ] || [ -f "$d/.git" ]; then
+      is_linked_worktree "${d%/}" && continue
       echo "${d%/}"
     fi
   done
   if [ -d "$DEV/meradOS/Skill-Suite/.git" ] || [ -f "$DEV/meradOS/Skill-Suite/.git" ]; then
+    is_linked_worktree "$DEV/meradOS/Skill-Suite" && return 0
     echo "$DEV/meradOS/Skill-Suite"
   fi
+}
+
+# HEAD first. A colliding local tag must not fail a branch that is already
+# on origin, and must never be force-pushed.
+push_head_and_tags() {
+  local r="$1" name out
+  name=$(basename "$r")
+  if ! out=$(gitx "$r" push -u origin HEAD 2>&1); then
+    diagnose_push "$r" "$name"
+    printf '%s\n' "$out" | head -3 | sed 's/^/       /'
+    return 1
+  fi
+  if out=$(gitx "$r" push origin --tags 2>&1); then
+    return 0
+  fi
+  if grep -qiE 'already exists|bereits vorhanden|existiert bereits' <<<"$out"; then
+    warn "  $name – Branch auf origin, Tags kollidieren (kein Force)"
+    return 0
+  fi
+  diagnose_push "$r" "$name"
+  printf '%s\n' "$out" | head -3 | sed 's/^/       /'
+  return 1
 }
 
 nwo_norm() {
@@ -320,10 +354,8 @@ push_one() {
   bold "push $name ($u)"
   # Nur die aktuelle Branch: "--all" hat lokale Wegwerf-Branches nach GitHub
   # getragen, wo sie neben echten Feature-Branches stehen.
-  if gitx "$r" push -u origin HEAD --tags 2>/dev/null; then
+  if push_head_and_tags "$r"; then
     ok "  $name"
-  else
-    diagnose_push "$r" "$name"
   fi
 }
 
@@ -353,7 +385,7 @@ ensure_remote() {
   fi
   if gh repo view "$nwo" >/dev/null 2>&1; then
     gitx "$r" remote add origin "git@github.com:$nwo.git" 2>/dev/null || true
-    gitx "$r" push -u origin HEAD --tags 2>/dev/null && return 0
+    push_head_and_tags "$r" && return 0
   fi
   err "  $name – Remote konnte nicht angelegt werden"
   return 1
@@ -487,11 +519,9 @@ ship_one() {
   fi
   # Nur die aktuelle Branch. "push --all" hat Wegwerf-Branches mit
   # Zwischenstaenden auf GitHub geschoben, wo sie wie Arbeitsergebnis aussehen.
-  if gitx "$r" push -u origin HEAD --tags 2>/dev/null; then
+  if push_head_and_tags "$r"; then
     ok "  ship $name"
     suite_release "$r"
-  else
-    diagnose_push "$r" "$name"
   fi
 }
 
