@@ -33,7 +33,7 @@ Canonical copy: `~/Developer/Skill-Suite/skills/cpr/SKILL.md`. Copy public subse
    - **Web/API** (Vercel): `npx vercel deploy --prod --yes --scope merad-os` so `alpha.merados.com` moves. Confirm the alias, then smoke the changed endpoint.
 6. **TestFlight (cprt / mcprt)** — release **every independent iOS application in the scoped repository**, even if its native source did not change. Discover iOS application targets and validate the release manifest against them before uploads; never silently ship only the default scheme. App extensions, test bundles and embedded watch companions are not separate iOS apps; archive them with their owning app. tvOS, visionOS and unrelated repositories are outside this default unless requested.
    - Use each app’s own scheme, bundle ID and App Store Connect app ID. Query that app’s iOS builds and choose its highest numeric build number + 1; API errors must stop that app, not fall back to a local number. Never reuse one app’s number/identity across all apps.
-   - Prefer a repository multi-app entry point. In alpha-merados: `./scripts/release-ios.sh --submit-review` releases AlphaMerados and MeradosAnalysis. `--app <scheme>` is for an explicitly requested subset or retrying a named failed app; it does not satisfy the full cprt by itself. Do not pass a global `--build-number` to an all-app release.
+   - In alpha-merados, `cpr` and `cprt` use `./scripts/release.sh`. iOS builds on GitHub (`ios-testflight`), not on the local Mac. `./scripts/release-ios.sh` is only when the user explicitly asks for a local archive and no remote TestFlight run for these apps is in progress. A local upload sits outside that queue and collided on build 73 (2026-09-25, Redundant Binary Upload). `--app <scheme>` does not satisfy a full cprt by itself. Do not pass a global `--build-number` to an all-app release.
    - Process archives sequentially when sharing generated Xcode project/build paths. Continue/report independent apps if one fails; return failure until every requested app is accounted for.
    - Verify VALID processing, export compliance, localized test notes and membership/access in both `intern` and `Extern` for every app. `intern` may have automatic access to all builds. There is no group named `Beta`. Submit a required TestFlight beta review as part of the authorized external release; do not publish to the live App Store. Distinguish group assignment, review pending and actual `IN_BETA_TESTING`.
    - **cpr** and **mcpr** stop after production web/suite release.
@@ -66,13 +66,16 @@ Publishing a skill **is** CPR of both suites:
 
 ## alpha-merados TestFlight (cprt / mcprt — all iOS apps)
 
+Gesetz: do not build or upload iOS locally for `cpr` or `cprt`. Run `./scripts/release.sh cpr`, `./scripts/release.sh cprt`, or `./scripts/release.sh testflight`. GitHub Actions archives both apps. Local Xcode, ASC keys and signing certificates are not required for that path.
+
 - Required app inventory: `AlphaMerados` / `com.merados.alpha` / ASC `6762538440`; `MeradosAnalysis` / `com.merados.analysis` / ASC `6804377601`. Keep the repository manifest and iOS targets in sync.
-- ASC key: `~/.appstoreconnect/private_keys/AuthKey_WA46CWAG8B.p8` (issuer in `ios-native/scripts/archive.sh`).
-- Homebrew `rsync` 3.5 breaks `exportArchive`. Export with `PATH` putting `/usr/bin` first. `asc.py` needs a Python interpreter with PyJWT; verify the installed interpreter instead of assuming a machine-specific virtualenv path.
-- **Xcode beta cannot upload** (App Store Connect 90534). Need Release/RC Xcode at `/Applications/Xcode.app`. If only beta: still commit + push + Vercel; say TestFlight is blocked. Do not call the simulator the release.
-- Query ASC for the next build number; do not trust `project.yml`.
-- `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
-- After `xcodegen`, restore `CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"` if it froze to a literal. Keep `ITSAppUsesNonExemptEncryption` in `project.yml` and Info.plist.
+- Only after an explicit request for a local archive, and only while no remote run of these apps is active:
+  - ASC key file is not `AuthKey_WA46CWAG8B.p8` on every Mac. Set `ASC_KEY_ID` to a key that exists locally. The script stops before the archive when the file is missing.
+  - Homebrew `rsync` 3.5 breaks `exportArchive`. Export with `PATH` putting `/usr/bin` first. `asc.py` needs a Python interpreter with PyJWT.
+  - Xcode beta cannot upload (App Store Connect 90534). Use `/Applications/Xcode.app`. If only beta is installed, still ship the web and say TestFlight is blocked. Do not call the simulator the release.
+  - Query ASC for the next build number; do not trust `project.yml`.
+  - `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+  - After `xcodegen`, restore `CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"` if it froze to a literal. Keep `ITSAppUsesNonExemptEncryption` in `project.yml` and Info.plist.
 
 ## Done when
 
