@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2] — 2026-10-13 — iCloud-Status und Dokumenten-Merge
+
+### Added
+- `icloud-status` — lesende macOS-Prüfung von iCloud Drive, Schreibtisch und Dokumenten mit Upload-/Downloadzuständen, Fehlern und ausdrücklich ausgewiesener unvollständiger Abdeckung.
+- `icloud-status merge-documents` — Gerätebestände rekursiv in einem gemeinsamen `~/Documents` zusammenführen; alle Dateikopien behalten, Namenskollisionen mit Herkunftszusatz auflösen, Vorschau und dauerhaftes Journal.
+- Native macOS-Verschiebungen mit Schutz vor Überschreiben, veränderten Quellen, Pfadumleitungen und versehentlichem Verschieben aus iCloud in lokale Ordner; 15 Integrationstests mit isolierten Testdateien.
+
 ## [0.1.1] — 2026-09-25
 
 ### Added
