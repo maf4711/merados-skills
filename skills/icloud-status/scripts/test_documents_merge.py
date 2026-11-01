@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Real filesystem merge checks, exclusively in isolated temporary directories."""
+
 import json
 import os
 from pathlib import Path
@@ -33,15 +34,22 @@ class MergeTests(unittest.TestCase):
 
     def apply(self, plan):
         journal = self.root / "journal.jsonl"
-        result = subprocess.run(["/usr/bin/xcrun", "swift", str(merge.NATIVE), "apply", str(journal)],
-                                input=merge.encode(plan), capture_output=True, timeout=45)
+        result = subprocess.run(
+            ["/usr/bin/xcrun", "swift", str(merge.NATIVE), "apply", str(journal)],
+            input=merge.encode(plan),
+            capture_output=True,
+            timeout=45,
+        )
         summary = json.loads(result.stdout)
         return result.returncode, summary, journal
 
     def test_recursive_merge_preserves_identical_duplicates_and_metadata(self):
         self.write(self.target, "Finanzen/Rechnung.pdf", b"same bytes")
         duplicate = self.write(self.source, "Finanzen/Rechnung.pdf", b"same bytes")
-        subprocess.run(["/usr/bin/xattr", "-w", "user.merge-test", "preserved", str(duplicate)], check=True)
+        subprocess.run(
+            ["/usr/bin/xattr", "-w", "user.merge-test", "preserved", str(duplicate)],
+            check=True,
+        )
         self.write(self.source, "Finanzen/neu.pdf", b"new")
         self.write(self.source, "NeueKategorie/nested.txt", b"nested")
         plan = merge.make_plan(self.source, self.target)
@@ -50,12 +58,20 @@ class MergeTests(unittest.TestCase):
         code, summary, journal = self.apply(plan)
         self.assertEqual(code, 0, summary)
         self.assertFalse(self.source.exists())
-        self.assertEqual((self.target / "Finanzen/Rechnung.pdf").read_bytes(), b"same bytes")
+        self.assertEqual(
+            (self.target / "Finanzen/Rechnung.pdf").read_bytes(), b"same bytes"
+        )
         preserved = self.target / "Finanzen/Rechnung (von MacBook).pdf"
         self.assertEqual(preserved.read_bytes(), b"same bytes")
-        attribute = subprocess.run(["/usr/bin/xattr", "-p", "user.merge-test", str(preserved)], check=True, capture_output=True)
+        attribute = subprocess.run(
+            ["/usr/bin/xattr", "-p", "user.merge-test", str(preserved)],
+            check=True,
+            capture_output=True,
+        )
         self.assertEqual(attribute.stdout.strip(), b"preserved")
-        self.assertEqual((self.target / "NeueKategorie/nested.txt").read_bytes(), b"nested")
+        self.assertEqual(
+            (self.target / "NeueKategorie/nested.txt").read_bytes(), b"nested"
+        )
         rows = [json.loads(line) for line in journal.read_text().splitlines()]
         self.assertTrue(rows)
         self.assertEqual(os.stat(journal).st_mode & 0o777, 0o600)
@@ -79,7 +95,9 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(plan["summary"]["renamed_collisions"], 2)
         code, summary, _ = self.apply(plan)
         self.assertEqual(code, 0, summary)
-        self.assertTrue((self.target / "Demo (von MacBook).app/Contents/source.txt").exists())
+        self.assertTrue(
+            (self.target / "Demo (von MacBook).app/Contents/source.txt").exists()
+        )
         self.assertFalse((self.target / "Demo.app/Contents/source.txt").exists())
         self.assertEqual((self.target / "Reports").read_bytes(), b"file")
         self.assertTrue((self.target / "Reports (von MacBook)/document.txt").exists())

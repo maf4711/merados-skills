@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Read-only iCloud Drive snapshot; stdlib launcher with native Foundation metadata."""
+
 import argparse
 import concurrent.futures
 import datetime
@@ -11,7 +12,7 @@ import subprocess
 import sys
 
 
-SWIFT = r'''
+SWIFT = r"""
 import Foundation
 import Darwin
 
@@ -160,16 +161,21 @@ for root in roots {
 }
 let output = try JSONSerialization.data(withJSONObject: reports, options: [.sortedKeys])
 print(String(data: output, encoding: .utf8)!)
-'''
+"""
 
 
 def run_command(command, timeout, **kwargs):
     """Never return raw stderr: provider diagnostics can contain credentials."""
     try:
-        result = subprocess.run(command, capture_output=True, text=True,
-                                timeout=timeout, **kwargs)
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=timeout, **kwargs
+        )
         if result.returncode:
-            return {"ok": False, "reason": "command_failed", "exit_code": result.returncode}
+            return {
+                "ok": False,
+                "reason": "command_failed",
+                "exit_code": result.returncode,
+            }
         return {"ok": True, "output": result.stdout}
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "timeout"}
@@ -183,10 +189,14 @@ def parse_status(result):
     raw = re.sub(r"\x1b\[[0-9;]*m", "", result["output"])
     setting = re.search(r"Desktop & Documents:\s*current=(YES|NO)\b", raw)
     matched = re.search(r"^(\d+) containers matching", raw, re.MULTILINE)
-    last_sync = re.search(r"last-sync:(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?)", raw)
+    last_sync = re.search(
+        r"last-sync:(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?)", raw
+    )
     return {
         "ok": bool(matched and int(matched.group(1)) > 0),
-        "reason": None if matched and int(matched.group(1)) > 0 else "container_not_confirmed",
+        "reason": None
+        if matched and int(matched.group(1)) > 0
+        else "container_not_confirmed",
         "desktop_documents_enabled": setting.group(1) == "YES" if setting else None,
         "caught_up": bool(re.search(r"\bcaught-up\b", raw)) if matched else None,
         "last_sync_raw": last_sync.group(1).strip() if last_sync else None,
@@ -197,30 +207,60 @@ def parse_quota(result):
     if not result["ok"]:
         return result
     match = re.search(r"\b(\d+) bytes of quota remaining", result["output"])
-    return {"ok": bool(match), "remaining_bytes": int(match.group(1)) if match else None}
+    return {
+        "ok": bool(match),
+        "remaining_bytes": int(match.group(1)) if match else None,
+    }
 
 
 def collect(args):
     started = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        status_future = pool.submit(run_command, ["/usr/bin/brctl", "status", "com.apple.CloudDocs"], 10)
+        status_future = pool.submit(
+            run_command, ["/usr/bin/brctl", "status", "com.apple.CloudDocs"], 10
+        )
         quota_future = pool.submit(run_command, ["/usr/bin/brctl", "quota"], 10)
         provider = parse_status(status_future.result())
         quota = parse_quota(quota_future.result())
     base = Path.home()
-    roots = [{"name": "iCloud Drive", "path": str(base / "Library/Mobile Documents/com~apple~CloudDocs")}]
+    roots = [
+        {
+            "name": "iCloud Drive",
+            "path": str(base / "Library/Mobile Documents/com~apple~CloudDocs"),
+        }
+    ]
     skipped = []
     for name, folder in [("Schreibtisch", "Desktop"), ("Dokumente", "Documents")]:
         item = {"name": name, "path": str(base / folder)}
         if provider["desktop_documents_enabled"] is True:
             roots.append(item)
         else:
-            skipped.append(dict(item, state="disabled" if provider["desktop_documents_enabled"] is False else "setting_unknown", coverage_complete=False))
-    env = dict(os.environ, ICLOUD_STATUS_CONFIG=json.dumps({
-        "seconds": args.seconds, "max_files": args.max_files, "details": args.details, "roots": roots,
-    }))
-    native = run_command(["/usr/bin/xcrun", "swift", "-"],
-                         args.seconds * len(roots) + 30, input=SWIFT, env=env)
+            skipped.append(
+                dict(
+                    item,
+                    state="disabled"
+                    if provider["desktop_documents_enabled"] is False
+                    else "setting_unknown",
+                    coverage_complete=False,
+                )
+            )
+    env = dict(
+        os.environ,
+        ICLOUD_STATUS_CONFIG=json.dumps(
+            {
+                "seconds": args.seconds,
+                "max_files": args.max_files,
+                "details": args.details,
+                "roots": roots,
+            }
+        ),
+    )
+    native = run_command(
+        ["/usr/bin/xcrun", "swift", "-"],
+        args.seconds * len(roots) + 30,
+        input=SWIFT,
+        env=env,
+    )
     reports = []
     native_error = None
     if native["ok"]:
@@ -233,12 +273,23 @@ def collect(args):
     else:
         native_error = native
     if native_error:
-        reports = [dict(root, state="unavailable", coverage_complete=False,
-                        stop_reason=native_error["reason"]) for root in roots]
+        reports = [
+            dict(
+                root,
+                state="unavailable",
+                coverage_complete=False,
+                stop_reason=native_error["reason"],
+            )
+            for root in roots
+        ]
     return {
         "started_at": started,
-        "finished_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-        "provider": provider, "quota": quota, "areas": reports + skipped,
+        "finished_at": datetime.datetime.now()
+        .astimezone()
+        .isoformat(timespec="seconds"),
+        "provider": provider,
+        "quota": quota,
+        "areas": reports + skipped,
         "native_error": native_error,
         "scope": "Observed regular-file metadata; no server comparison or complete directory/deletion queue check.",
         "counts_overlap": True,
@@ -248,27 +299,53 @@ def collect(args):
 def render(report):
     print("iCloud-Status — " + report["finished_at"])
     enabled = report["provider"]["desktop_documents_enabled"]
-    print("Schreibtisch & Dokumente in iCloud: " + {True: "aktiviert", False: "AUS", None: "unbekannt"}[enabled])
+    print(
+        "Schreibtisch & Dokumente in iCloud: "
+        + {True: "aktiviert", False: "AUS", None: "unbekannt"}[enabled]
+    )
     states = {
         "disabled": "Lokaler Ordner; iCloud-Synchronisierung ausgeschaltet",
         "setting_unknown": "iCloud-Einstellung nicht ermittelbar; lokaler Ordner ungeprüft",
-        "unavailable": "Nicht prüfbar", "unconfirmed": "Status nicht vollständig bestimmbar",
-        "problems": "Fehler oder Konflikte", "active": "Übertragung läuft", "pending": "Änderungen ausstehend",
+        "unavailable": "Nicht prüfbar",
+        "unconfirmed": "Status nicht vollständig bestimmbar",
+        "problems": "Fehler oder Konflikte",
+        "active": "Übertragung läuft",
+        "pending": "Änderungen ausstehend",
         "observed_uploaded_no_transfers": "Alle geprüften Dateien melden hochgeladen; kein Transfer beobachtet",
     }
     for area in report["areas"]:
         print("\n" + area["name"] + ": " + states[area["state"]])
         c = area.get("counts")
         if c:
-            print(f"  Geprüft: {c['files_seen']} | hochgeladen: {c['uploaded']} | Upload läuft/wartet: {c['uploading']}/{c['waiting_upload']}")
-            print(f"  Download läuft/angefordert: {c['downloading']}/{c['download_requested_idle']} | nur Cloud: {c['cloud_only']} | lokal aktuell/älter: {c['local_current']}/{c['local_older']}")
-            print(f"  Konflikte: {c['conflicts']} | Sync-Fehler: {c['errors']} | unbekannt: {c['unknown']} | Lesefehler: {c['metadata_read_errors']}")
-            print("  Dateiprüfung: " + ("vollständig für lesbare reguläre Dateien" if area["coverage_complete"] else "TEILWEISE — " + (area.get("stop_reason") or "Zugriffsfehler")))
-            print(f"  Ausgelassen: {c['skipped_symlinks']} Symlinks, {c['ignored_system_files']} Finder-Systemdateien")
+            print(
+                f"  Geprüft: {c['files_seen']} | hochgeladen: {c['uploaded']} | Upload läuft/wartet: {c['uploading']}/{c['waiting_upload']}"
+            )
+            print(
+                f"  Download läuft/angefordert: {c['downloading']}/{c['download_requested_idle']} | nur Cloud: {c['cloud_only']} | lokal aktuell/älter: {c['local_current']}/{c['local_older']}"
+            )
+            print(
+                f"  Konflikte: {c['conflicts']} | Sync-Fehler: {c['errors']} | unbekannt: {c['unknown']} | Lesefehler: {c['metadata_read_errors']}"
+            )
+            print(
+                "  Dateiprüfung: "
+                + (
+                    "vollständig für lesbare reguläre Dateien"
+                    if area["coverage_complete"]
+                    else "TEILWEISE — " + (area.get("stop_reason") or "Zugriffsfehler")
+                )
+            )
+            print(
+                f"  Ausgelassen: {c['skipped_symlinks']} Symlinks, {c['ignored_system_files']} Finder-Systemdateien"
+            )
         elif area.get("stop_reason"):
             print("  Ursache: " + area["stop_reason"])
         for item in area.get("details", []):
-            print("  " + ", ".join(item["states"]) + ": " + json.dumps(item["path"], ensure_ascii=False))
+            print(
+                "  "
+                + ", ".join(item["states"])
+                + ": "
+                + json.dumps(item["path"], ensure_ascii=False)
+            )
             for key in ("upload_error", "download_error"):
                 error = item.get(key)
                 if error:
@@ -279,20 +356,43 @@ def render(report):
     if quota is not None:
         print(f"\niCloud-Speicher frei: {quota / 1_000_000_000:.2f} GB")
     if report["provider"].get("last_sync_raw"):
-        print("Letzter Container-Sync laut brctl (Zeitzone nicht angegeben): " + report["provider"]["last_sync_raw"])
+        print(
+            "Letzter Container-Sync laut brctl (Zeitzone nicht angegeben): "
+            + report["provider"]["last_sync_raw"]
+        )
     if not report["provider"]["ok"]:
-        print("Containerstatus nicht bestätigt: " + str(report["provider"].get("reason")))
-    print("Momentaufnahme lokaler Metadaten; kein unabhängiger Serverabgleich. Bereichszähler nicht addieren.")
+        print(
+            "Containerstatus nicht bestätigt: " + str(report["provider"].get("reason"))
+        )
+    print(
+        "Momentaufnahme lokaler Metadaten; kein unabhängiger Serverabgleich. Bereichszähler nicht addieren."
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="Strukturierte Ausgabe")
-    parser.add_argument("--seconds", type=float, default=20.0, help="Scanzeit pro Bereich, 1–300 Sekunden")
-    parser.add_argument("--max-files", type=int, default=100000, help="Maximale Dateien pro Bereich")
-    parser.add_argument("--details", type=int, default=10, help="Maximale Dateibeispiele pro Bereich, 0–100")
+    parser.add_argument(
+        "--seconds",
+        type=float,
+        default=20.0,
+        help="Scanzeit pro Bereich, 1–300 Sekunden",
+    )
+    parser.add_argument(
+        "--max-files", type=int, default=100000, help="Maximale Dateien pro Bereich"
+    )
+    parser.add_argument(
+        "--details",
+        type=int,
+        default=10,
+        help="Maximale Dateibeispiele pro Bereich, 0–100",
+    )
     args = parser.parse_args()
-    if not 1 <= args.seconds <= 300 or not 1 <= args.max_files <= 1000000 or not 0 <= args.details <= 100:
+    if (
+        not 1 <= args.seconds <= 300
+        or not 1 <= args.max_files <= 1000000
+        or not 0 <= args.details <= 100
+    ):
         parser.error("seconds: 1–300, max-files: 1–1000000, details: 0–100")
     if sys.platform != "darwin":
         parser.error("Dieser Skill benötigt macOS.")

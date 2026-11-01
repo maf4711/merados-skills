@@ -29,7 +29,9 @@ Apple, Vercel, and devsync facts required on every Mac.
 """
 
 
-def git(repo: Path, *args: str, check: bool = False) -> subprocess.CompletedProcess[str]:
+def git(
+    repo: Path, *args: str, check: bool = False
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(repo), *args],
         check=check,
@@ -78,14 +80,23 @@ def default_branch(repo: Path) -> str:
     if name.startswith("origin/"):
         return name.split("/", 1)[1]
     for candidate in ("main", "master"):
-        if git(repo, "show-ref", "-q", "--verify", f"refs/heads/{candidate}").returncode == 0:
+        if (
+            git(
+                repo, "show-ref", "-q", "--verify", f"refs/heads/{candidate}"
+            ).returncode
+            == 0
+        ):
             return candidate
     return "main"
 
 
 def busy(repo: Path) -> bool:
     proc = git(repo, "rev-parse", "--git-path", "MERGE_HEAD")
-    if proc.returncode == 0 and Path(proc.stdout.strip()).exists() and not proc.stdout.strip().startswith("/"):
+    if (
+        proc.returncode == 0
+        and Path(proc.stdout.strip()).exists()
+        and not proc.stdout.strip().startswith("/")
+    ):
         # git-path may be relative to repo
         pass
     markers = ("MERGE_HEAD", "REBASE_HEAD", "CHERRY_PICK_HEAD", "BISECT_LOG")
@@ -184,7 +195,9 @@ def release_lines(repo: Path, default: str) -> list[str]:
     names = workflow_names(repo)
     if names:
         listed = ", ".join(f"`{name}`" for name in names)
-        lines.append(f"GitHub Actions: {listed}. Der Default-Branch bleibt der auslieferbare Stand.")
+        lines.append(
+            f"GitHub Actions: {listed}. Der Default-Branch bleibt der auslieferbare Stand."
+        )
     if (repo / "Package.swift").is_file() and not lines:
         lines.append(
             "Swift-Package. Andere Macs ziehen es über die Git-URL des Default-Branches."
@@ -198,7 +211,9 @@ def release_lines(repo: Path, default: str) -> list[str]:
     return lines
 
 
-def contract(repo: Path, owner: str, name: str, folder: str, default: str, remote: str) -> str:
+def contract(
+    repo: Path, owner: str, name: str, folder: str, default: str, remote: str
+) -> str:
     ssh = f"git@github.com:{owner}/{name}.git"
     rel = "\n".join(f"- {line}" for line in release_lines(repo, default))
     text = f"""# Multi-Mac
@@ -295,7 +310,9 @@ Neu stempeln: `python3 ~/Developer/Skill-Suite/skills/repo-sync/scripts/stamp-mu
     return text
 
 
-def score(path: Path, branch: str, default: str, repo_name: str) -> tuple[int, int, str]:
+def score(
+    path: Path, branch: str, default: str, repo_name: str
+) -> tuple[int, int, str]:
     points = 0
     if branch == default:
         points += 100
@@ -329,7 +346,12 @@ def commit_file(repo: Path, path: Path) -> str:
         return "unchanged"
     proc = git(repo, "commit", "-m", COMMIT_MSG)
     if proc.returncode != 0:
-        return "commit-failed: " + (proc.stderr or proc.stdout).strip().splitlines()[-1:][0] if (proc.stderr or proc.stdout).strip() else "commit-failed"
+        return (
+            "commit-failed: "
+            + (proc.stderr or proc.stdout).strip().splitlines()[-1:][0]
+            if (proc.stderr or proc.stdout).strip()
+            else "commit-failed"
+        )
     return "committed"
 
 
@@ -346,8 +368,19 @@ def commit_via_worktree(repo: Path, default: str, body: str) -> str:
     else:
         fetched = git(repo, "fetch", "--prune", "origin")
         if fetched.returncode != 0:
-            return "fetch-failed: " + (fetched.stderr or "").strip().splitlines()[-1:][0]
-        add = git(repo, "worktree", "add", "--track", "-b", default, str(work), f"origin/{default}")
+            return (
+                "fetch-failed: " + (fetched.stderr or "").strip().splitlines()[-1:][0]
+            )
+        add = git(
+            repo,
+            "worktree",
+            "add",
+            "--track",
+            "-b",
+            default,
+            str(work),
+            f"origin/{default}",
+        )
     if add.returncode != 0:
         detail = (add.stderr or add.stdout).strip().splitlines()
         return "worktree-failed: " + (detail[-1] if detail else "unknown")
@@ -401,7 +434,9 @@ def main() -> int:
         folder = writer.name
         if writer.parent != DEV:
             folder = str(writer.relative_to(DEV))
-        body = contract(writer, owner, name, folder, default, f"git@github.com:{owner}/{name}.git")
+        body = contract(
+            writer, owner, name, folder, default, f"git@github.com:{owner}/{name}.git"
+        )
         action = "dry-run"
         if args.write:
             if busy(writer) and branch == default:
@@ -414,7 +449,16 @@ def main() -> int:
                     action = commit_file(writer, writer / "MULTI-MAC.md")
                 else:
                     action = commit_via_worktree(writer, default, body)
-            if action.startswith(("commit-failed", "push-failed", "merge-failed", "worktree", "fetch-failed", "skip-busy")):
+            if action.startswith(
+                (
+                    "commit-failed",
+                    "push-failed",
+                    "merge-failed",
+                    "worktree",
+                    "fetch-failed",
+                    "skip-busy",
+                )
+            ):
                 failures += 1
         else:
             action = f"would-write branch={branch} default={default}"
