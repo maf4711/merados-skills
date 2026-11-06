@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.3] — 2026-11-06 — Skill-Bereinigung
+
+### Removed
+- `depeche-mode-radio`, `dm80s80s`, `open-mac`, `projekt-loop` — in der kanonischen Skill-Suite (v0.9.0) als nie genutzt entfernt; der öffentliche Spiegel folgt.
+
 ## [0.1.2] — 2026-10-13 — iCloud-Status und Dokumenten-Merge
 
 ### Added
