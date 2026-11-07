@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.4] — 2026-11-08 — cpr: Token `cprd`
+
+### Added
+- `cpr` — neues Token **`cprd`**: `cpr` + Deploy der released Skill-Suite auf jeden erreichbaren Cluster-Node (`skills/cpr/scripts/deploy-nodes.sh`, liest `~/.config/maccluster/cluster.toml`, eine Ergebniszeile pro Node, nicht erreichbare Nodes werden benannt). Spiegel der kanonischen Skill-Suite v0.9.19.
+
 ## [0.1.3] — 2026-11-06 — Skill-Bereinigung
 
 ### Removed

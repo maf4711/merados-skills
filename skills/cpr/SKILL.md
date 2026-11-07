@@ -1,9 +1,9 @@
 ---
 name: cpr
-description: Use when the user says cpr, /cpr, mcpr, /mcpr, cprt, /cprt, mcprt, /mcprt, crpa, /crpa, merge cpr, merge and cpr, commit push release, commit+push+release, Skill Suite CPR, or CPR Skill Suite.
+description: Use when the user says cpr, /cpr, mcpr, /mcpr, cprt, /cprt, mcprt, /mcprt, cprd, /cprd, crpa, /crpa, merge cpr, merge and cpr, commit push release, commit+push+release, deploy on all nodes, deploy auf allen nodes, Skill Suite CPR, or CPR Skill Suite.
 ---
 
-# cpr / cprt / mcpr / mcprt / crpa
+# cpr / cprt / mcpr / mcprt / cprd / crpa
 
 Not a question. Run the matching row. Do not ask whether to push or release.
 
@@ -13,9 +13,10 @@ Not a question. Run the matching row. Do not ask whether to push or release.
 | **mcpr** | merge the open PR (or current branch) into the production branch, then **cpr** | no |
 | **cprt** | **cpr** + TestFlight for **every iOS app in the release repository** (`intern` + `Extern`) | all iOS apps |
 | **mcprt** | **mcpr** + the same complete iOS TestFlight release | all iOS apps |
-| **crpa** | **cpr** + release rolled out to **every cluster member** (see below) | no |
+| **cprd** | **cpr** + **d**eploy the released Skill-Suite on **each available cluster node** (see below) | no |
+| **crpa** | **cpr** + maccluster release rolled out to **every cluster member** (see below) | no |
 
-Aliases: `merge cpr` / `merge and cpr` → **mcpr**. `merge cpr tf` → **mcprt**. `cpr tf` / `ship including TestFlight` → **cprt**. `maccluster-castle` → **crpa**.
+Aliases: `merge cpr` / `merge and cpr` → **mcpr**. `merge cpr tf` → **mcprt**. `cpr tf` / `ship including TestFlight` → **cprt**. `deploy on all nodes` / `deploy auf allen nodes` (after a skill publish) → **cprd**. `maccluster-castle` → **crpa**.
 
 **REQUIRED SUB-SKILL:** `repo-sync` for multi-repo / `~/Developer` ship. `git-commit` for message shape. TestFlight details: this file + `testflight`.
 
@@ -37,6 +38,30 @@ Canonical copy: `~/Developer/Skill-Suite/skills/cpr/SKILL.md`. Copy public subse
    - Process archives sequentially when sharing generated Xcode project/build paths. Continue/report independent apps if one fails; return failure until every requested app is accounted for.
    - Verify VALID processing, export compliance, localized test notes and membership/access in both `intern` and `Extern` for every app. `intern` may have automatic access to all builds. There is no group named `Beta`. Submit a required TestFlight beta review as part of the authorized external release; do not publish to the live App Store. Distinguish group assignment, review pending and actual `IN_BETA_TESTING`.
    - **cpr** and **mcpr** stop after production web/suite release.
+
+## cprd — deploy the Skill-Suite on each available node
+
+After the normal **cpr** release of the Skill-Suite, bring every other Mac in
+`~/.config/maccluster/cluster.toml` to the same tag. User definition 2026-11-08
+("deploy auf allen nodes" → make it a token).
+
+```bash
+~/.claude/skills/cpr/scripts/deploy-nodes.sh          # add --dry-run to only list nodes
+```
+
+What the script does, per node that is not this machine:
+`ssh <ssh_target> 'cd ~/Developer/Skill-Suite && git fetch --tags && git pull --ff-only origin <branch> && ./install.sh'`,
+then compares the node's HEAD with the local HEAD. It runs `./install.sh` locally too,
+and passes `-o BindAddress=<own bridge0 IP>` because the generated `~/.ssh/config.d/maccluster`
+may still carry the bind IP of the node that wrote it (`bind: Can't assign requested address`
+is that local misconfig, not a dead peer).
+
+- Result is one row per node: `ok | self | MISMATCH | FAILED | UNREACHABLE`. Exit 0 only when
+  every reachable node reports the local HEAD.
+- Unreachable members (laptop asleep, no TB link) are **named in the result**, never silently skipped.
+- Nodes outside `cluster.toml` (e.g. the exocluster `mos1`–`mos4`) are not Skill-Suite hosts
+  and are out of scope unless the user names them.
+- `REPO_DIR=<path>` / `--repo` deploys another `~/Developer/<repo>` checkout the same way.
 
 ## crpa — cluster rollout (maccluster & friends)
 
@@ -83,4 +108,5 @@ Gesetz: do not build or upload iOS locally for `cpr` or `cprt`. Run `./scripts/r
 - Skill Suite: tag + GitHub Release + `install.sh` if this was a skill publish.
 - Production URL serves the change when the repo is a web/API app (verified).
 - **cprt / mcprt:** report one row per discovered iOS app: bundle, build number, upload/processing, internal state and external state. No all-app success if an app was omitted or failed. Pending Apple review is explicitly pending, not available. A named Xcode/ASC blocker must identify the affected app; successful sibling releases remain reported.
+- **cprd only:** `deploy-nodes.sh` exits 0 and its table shows `ok`/`self` with the released HEAD on every reachable node; unreachable or failed nodes are named.
 - **crpa only:** every reachable cluster member reports the released version; unreachable members are named.
