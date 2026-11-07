@@ -38,11 +38,20 @@ npx skills add maf4711/merados-skills@elon-algo
 npx skills add maf4711/merados-skills@dm80s80s
 npx skills add maf4711/merados-skills@repo-sync
 npx skills add maf4711/merados-skills@cpr
+npx skills add maf4711/merados-skills@icloud-status
 ```
 
 ---
 
 ## Skills
+
+### iCloud-Status (`$icloud-status`)
+
+Prüft iCloud Drive, Schreibtisch und Dokumente auf macOS: Uploads, Downloads,
+wartende Dateien, Konflikte und Fehler, mit klaren Grenzen unvollständiger Scans.
+`$icloud-status merge-documents` führt ausdrücklich ausgewählte Gerätebestände in
+`~/Documents` zusammen. Alle Kopien bleiben erhalten; Namenskonflikte erhalten
+einen Herkunftszusatz. Voraussetzungen: macOS und `xcrun swift`.
 
 ### repo-sync (`/repo-sync`) + cpr (`/cpr` `/mcpr` `/mcprt`)
 

@@ -32,6 +32,16 @@ display notification "$body" with title "$title" sound name "Glass"
 EOF
 }
 
+# Hold: waehrend gezielter Arbeit an einem Repo soll nichts automatisch
+# transferiert werden. Gleiche Konvention wie sim-guard.hold / cpu-guard.hold.
+#   anhalten:   touch ~/.cache/devsync.hold
+#   fortsetzen: rm ~/.cache/devsync.hold
+HOLD="${DEVSYNC_HOLD:-$HOME/.cache/devsync.hold}"
+if [ -f "$HOLD" ]; then
+  log "skip: hold aktiv ($HOLD)"
+  exit 0
+fi
+
 # Offline? Nichts tun.
 if ! /usr/bin/nc -z -G 3 github.com 443 2>/dev/null; then
   log "skip: github.com unreachable"

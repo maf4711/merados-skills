@@ -1,6 +1,6 @@
 ---
 name: repo-sync
-description: Use when syncing ~/Developer git repos across Macs via GitHub, or when the user says /repo-sync, repos syncen, sync repos, ship to github, merge and cpr, fehlende repos klonen, lade alle remote repos, origin fehlt, anderes macbook, zweiter mac, leave-mac, open-mac, danach repo-sync.
+description: Use when syncing ~/Developer git repos across Macs via GitHub, or when the user says /repo-sync, repos syncen, sync repos, ship to github, merge and cpr, fehlende repos klonen, lade alle remote repos, origin fehlt, anderes macbook, zweiter mac, leave-mac, open-mac, danach repo-sync. Every owned repo carries MULTI-MAC.md so any Mac can edit and release it.
 ---
 
 # repo-sync
@@ -62,6 +62,19 @@ DEVSYNC_JOBS=8 ~/.claude/skills/repo-sync/devsync.sh clone
 DEVSYNC_ARCHIVED=1 ~/.claude/skills/repo-sync/devsync.sh clone   # inkl. archivierte
 DEVSYNC_OWNERS="maf4711 MeradosUG FinfuxUG" ~/.claude/skills/repo-sync/devsync.sh sync
 ```
+
+## Multi-Mac (bearbeiten und releasen)
+
+Jedes Repo unter `maf4711`, `MeradosUG` und `FinfuxUG` trägt `MULTI-MAC.md` im Root. Darin stehen Origin, Default-Branch, der Release-Befehl dieses Repos und die gemeinsamen Fakten (GitHub-User, Apple-Team, ASC-Key-Pfade, Vercel-Team-Slugs, Xcode-Pfad, devsync). Schlüssel-Dateien stehen dort als Pfade, nie als Inhalt.
+
+Neu erzeugen, nachdem sich ein Release-Weg geändert hat:
+
+```bash
+python3 ~/Developer/Skill-Suite/skills/repo-sync/scripts/stamp-multi-mac.py --write
+~/.claude/skills/repo-sync/devsync.sh ship
+```
+
+Ein neuer Mac wird mit `setup-mac.sh` auf denselben Stand gebracht (Clone, Skill-Suite-`install.sh`, LaunchAgent, Release-Vorcheck). `mos1`–`mos4` bekommen den Code per Node-Push; GitHub-Release läuft auf einem Mac, der als `maf4711` angemeldet ist.
 
 ## Installation
 
