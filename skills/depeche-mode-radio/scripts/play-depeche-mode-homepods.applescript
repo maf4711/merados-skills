@@ -8,13 +8,16 @@ on playAll()
 	set streamURL to "https://streams.80s80s.de/dm/mp3-192/streams.80s80s.de/"
 	
 	tell application "Music"
-		activate
+		if not running then launch
 		set deviceList to every AirPlay device
 		
-		-- alles aus
+		-- Do NOT deselect all first — that pauses every HomePod (audible stop).
+		-- Only strip Computer / Apple TV / TV.
 		repeat with oneDevice in deviceList
 			try
-				set selected of oneDevice to false
+				if ((kind of oneDevice) as text) is not "HomePod" then
+					set selected of oneDevice to false
+				end if
 			end try
 		end repeat
 		

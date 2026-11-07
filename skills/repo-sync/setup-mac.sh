@@ -81,7 +81,7 @@ step "2/5  Skill-Repo"
 
 if [ -d "$SKILLS_DIR/.git" ]; then
   ok "merados-skills vorhanden"
-  do_it "pull" && git -C "$SKILLS_DIR" pull --ff-only -q 2>/dev/null
+  do_it "pull" && git -C "$SKILLS_DIR" pull --no-rebase --no-edit -q 2>/dev/null
 else
   if do_it "merados-skills klonen"; then
     mkdir -p "$DEV"
@@ -140,8 +140,8 @@ else
 fi
 
 # --------------------------------------------------------------------------- #
-step "6/6  Auto-Sync LaunchAgent (alle 30 min + Notification)"
-# push+pull periodisch; notify bei dirty/unpushed. Commitet nie.
+step "6/6  Auto-Sync LaunchAgent (alle 2 min + Notification)"
+# push+pull-merge periodisch; notify bei dirty/unpushed. Commitet nie.
 
 PLIST_SRC="$HERE/com.merados.devsync.plist"
 PLIST_DST="$HOME/Library/LaunchAgents/com.merados.devsync.plist"
@@ -154,7 +154,7 @@ if [ -f "$PLIST_SRC" ]; then
     launchctl bootout "gui/$(id -u)/com.merados.devsync" 2>/dev/null || true
     launchctl bootstrap "gui/$(id -u)" "$PLIST_DST" 2>/dev/null \
       || launchctl load -w "$PLIST_DST" 2>/dev/null || true
-    ok "com.merados.devsync geladen (alle 30 min)"
+    ok "com.merados.devsync geladen (alle 2 min)"
   fi
 else
   warn "com.merados.devsync.plist fehlt, übersprungen"

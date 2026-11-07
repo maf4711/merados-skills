@@ -35,11 +35,29 @@ npx skills add maf4711/merados-skills
 npx skills add maf4711/merados-skills@merados-desktop
 npx skills add maf4711/merados-skills@merados-slack-advisor
 npx skills add maf4711/merados-skills@elon-algo
+npx skills add maf4711/merados-skills@dm80s80s
+npx skills add maf4711/merados-skills@repo-sync
+npx skills add maf4711/merados-skills@cpr
 ```
 
 ---
 
 ## Skills
+
+### repo-sync (`/repo-sync`) + cpr (`/cpr` `/mcpr` `/mcprt`)
+
+Schnellster Multi-Mac-Lauf: paralleles Commit (ohne Secrets/Build-Schrott), Merge, Push, GitHub-Release der Skill-Suites. Agent-Default `devsync.sh sync`. LaunchAgent alle 2 min nur push+pull-merge.
+
+### DM80s80s (`/dm80s80s`)
+
+Mac-als-Quelle: 80s80s HTTP-Stream auf HomePods, Watchdog, Presence, Besuchsmodus, Menüleisten-App.
+
+- Immer zuerst `dm80s80s status`. Schon HTTP-playing → nicht neu starten.
+- Nie Apple-Music-Sender `ra.1461987621` (pausiert AirPlay).
+- `aus` = `dm80s80s off --keep-http` (Webhook bleibt). Wirklich tot = `dm80s80s off`.
+- Siri ohne Mac / CarPlay bleibt **depeche-mode-radio** (Macaro).
+
+Repo: `~/Developer/DM80s80s`
 
 ### meradOS Desktop (`/merados-desktop`)
 

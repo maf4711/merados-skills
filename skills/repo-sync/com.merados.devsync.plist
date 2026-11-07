@@ -10,9 +10,9 @@
 		<string>/Users/a321/.claude/skills/repo-sync/auto-sync.sh</string>
 	</array>
 	<key>StartInterval</key>
-	<integer>1800</integer>
+	<integer>120</integer>
 	<key>RunAtLoad</key>
-	<true/>
+	<false/>
 	<key>StandardOutPath</key>
 	<string>/Users/a321/.cache/devsync/launchd.out.log</string>
 	<key>StandardErrorPath</key>
