@@ -27,6 +27,7 @@ done
 [ -f "$CLUSTER" ] || { echo "no cluster file at $CLUSTER" >&2; exit 2; }
 
 REL_REPO="${REPO/#$HOME\//}"           # path relative to $HOME, reused on peers
+git -C "$REPO" fetch --tags origin >/dev/null 2>&1 || true   # gh release creates the tag remotely
 BRANCH="$(git -C "$REPO" branch --show-current)"
 LOCAL_HEAD="$(git -C "$REPO" rev-parse --short HEAD)"
 LOCAL_TAG="$(git -C "$REPO" describe --tags --abbrev=0 2>/dev/null || echo none)"
@@ -35,7 +36,8 @@ LOCAL_TAG="$(git -C "$REPO" describe --tags --abbrev=0 2>/dev/null || echo none)
 # ~/.ssh/config.d/maccluster may still carry the bind IP of the node that wrote it)
 MY_IPS="$(ifconfig 2>/dev/null | awk '/inet /{print $2}' | tr '\n' ' ')"
 BIND_IP="$(ifconfig bridge0 2>/dev/null | awk '/inet /{print $2}' | head -1)"
-SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new)
+# -n: ssh must not read the node list from stdin inside the loop below
+SSH_OPTS=(-n -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new)
 [ -n "$BIND_IP" ] && SSH_OPTS+=(-o "BindAddress=$BIND_IP")
 
 # id<TAB>ip<TAB>ssh_target  (ssh_target falls back to ip)

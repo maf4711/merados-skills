@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.5] — 2026-11-08 — cpr: cprd-Skript Fix
+
+### Fixed
+- `deploy-nodes.sh`: `ssh -n` (Loop brach nach dem ersten Node ab) und lokaler Tag-Fetch vor dem Vergleich. Spiegel von Skill-Suite v0.9.20.
+
 ## [0.1.4] — 2026-11-08 — cpr: Token `cprd`
 
 ### Added
