@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.6] — 2026-11-18 — DM8080s
+
+Der neue Skill dm8080s unterstützt den lokalen Betrieb und die Diagnose des Mac-Radios.
+
 ## [0.1.5] — 2026-11-08 — cpr: cprd-Skript Fix
 
 ### Fixed
