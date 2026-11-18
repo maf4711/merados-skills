@@ -16,6 +16,13 @@ LOG="$LOG_DIR/auto-sync.log"
 FORCE_NOTIFY=0
 [ "${1:-}" = "--now" ] && FORCE_NOTIFY=1
 
+# Kein fsmonitor-Daemon pro Repo aus der Schleife (alle 120 s ueber ~200
+# Repos). Gilt fuer jeden git-Aufruf hier und im devsync-Kindprozess; das
+# globale core.fsmonitor fuer die interaktive Arbeit bleibt unveraendert.
+n=${GIT_CONFIG_COUNT:-0}
+export "GIT_CONFIG_KEY_$n=core.fsmonitor" "GIT_CONFIG_VALUE_$n=false"
+export GIT_CONFIG_COUNT=$((n + 1))
+
 mkdir -p "$LOG_DIR"
 exec >>"$LOG" 2>&1
 
@@ -70,7 +77,7 @@ fi
 # verteilt dieser Mac: Fast-Forward-Push per SSH in ihre Repos.
 # Kein --force — git lehnt Nicht-Fast-Forward selbst ab, und
 # receive.denyCurrentBranch=updateInstead aktualisiert nur saubere Worktrees.
-NODES="${DEVSYNC_NODES:-mos1 mos2 mos3 mos4}"
+NODES="${DEVSYNC_NODES-mos1 mos2 mos3 mos4}"
 NODE_FAILS=$(mktemp "${TMPDIR:-/tmp}/devsync-nodefail.XXXXXX")
 
 push_node() {

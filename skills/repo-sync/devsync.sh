@@ -21,6 +21,10 @@ CREATE_OWNER="${DEVSYNC_CREATE_OWNER:-maf4711}"
 JOBS="${DEVSYNC_JOBS:-}"
 export GIT_TERMINAL_PROMPT=0
 export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new}"
+# Batch-Lauf: kein fsmonitor-Daemon pro Repo (auch fuer direkte git -C).
+n=${GIT_CONFIG_COUNT:-0}
+export "GIT_CONFIG_KEY_$n=core.fsmonitor" "GIT_CONFIG_VALUE_$n=false"
+export GIT_CONFIG_COUNT=$((n + 1))
 GIT_FAST="-c protocol.version=2 -c fetch.parallel=8 -c submodule.fetchJobs=0"
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }

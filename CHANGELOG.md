@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.7] — 2026-11-18 — repo-sync: batch-git ohne fsmonitor
+
+`auto-sync.sh` und `devsync.sh` laufen mit `core.fsmonitor=false` (über `GIT_CONFIG_COUNT`), damit der 120-s-LaunchAgent nicht mehr pro Repo einen `git fsmonitor--daemon` startet. `DEVSYNC_NODES=""` schaltet die Node-Pushes ab. Neuer Test `skills/repo-sync/tests/test_fsmonitor_off.sh`. Übernommen aus Skill-Suite v0.9.25.
+
 ## [0.1.6] — 2026-11-18 — DM8080s
 
 Der neue Skill dm8080s unterstützt den lokalen Betrieb und die Diagnose des Mac-Radios.
